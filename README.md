@@ -147,7 +147,6 @@ DEFAULT_TEMPERATURE = 0.7
 - **0.5 - 1.0** ⚖️ Balanced creativity and coherence
 - **1.0 - 2.0** 🎨 Highly creative, unpredictable output
 
----
 
 
 ---
