@@ -148,15 +148,6 @@ DEFAULT_TEMPERATURE = 0.7
 
 ---
 
-## 📁 Project Structure
-
-```
-ai-writer/
-├── ai_writer.py          # Main application file
-├── requirements.txt      # Python dependencies
-├── README.md            # This file
-└── .gitignore           # Git ignore rules
-```
 
 ---
 
@@ -189,7 +180,7 @@ No models available
 ```
 **Solution:** Pull a model:
 ```bash
-ollama pull llama2
+ollama run thewindmom/hermes-3-llama-3.1-8b
 ```
 
 ### python-docx Not Available
@@ -234,18 +225,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📬 Contact
 
-Have questions or suggestions? Open an issue on GitHub or reach out!
-
-**Project Link:** [https://github.com/yourusername/ai-writer](https://github.com/yourusername/ai-writer)
 
 ---
 
-<div align="center">
 
-**Made with ❤️ for writers and developers**
-
-⭐ Star this repo if you find it useful!
-
-</div>
