@@ -204,12 +204,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Ollama](https://ollama.ai) - Local LLM infrastructure
 - [PyQt5](https://www.riverbankcomputing.com/software/pyqt/) - GUI framework
-- [python-docx](https://python-docx.readthedocs.io/) - Word document support
 
 ---
 
 
-
----
 
 
