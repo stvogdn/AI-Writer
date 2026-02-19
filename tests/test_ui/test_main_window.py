@@ -59,7 +59,7 @@ class TestMainWindow:
     def test_initial_state(self, main_window):
         """Test initial UI state."""
         # Generate button should be disabled initially
-        assert not main_window.generate_btn.isEnabled()
+        assert not main_window.toolbar.generate_btn.isEnabled()
 
         # Default token limit should be set
         assert main_window.token_limit == 140
@@ -70,7 +70,7 @@ class TestMainWindow:
         initial_theme = main_window.current_theme
 
         # Click theme toggle button
-        QTest.mouseClick(main_window.theme_btn, Qt.LeftButton)
+        QTest.mouseClick(main_window.toolbar.theme_btn, Qt.LeftButton)
 
         # Theme should have changed
         assert main_window.current_theme != initial_theme
@@ -78,12 +78,12 @@ class TestMainWindow:
     def test_text_change_enables_generate_button(self, main_window):
         """Test that adding text and selecting model enables generate button."""
         # Initially disabled
-        assert not main_window.generate_btn.isEnabled()
+        assert not main_window.toolbar.generate_btn.isEnabled()
 
         # Add a model to combo
-        main_window.model_combo.clear()
-        main_window.model_combo.addItem("test-model")
-        main_window.model_combo.setCurrentText("test-model")
+        main_window.toolbar.model_combo.clear()
+        main_window.toolbar.model_combo.addItem("test-model")
+        main_window.toolbar.model_combo.setCurrentText("test-model")
 
         # Add some text
         main_window.editor.setPlainText("Test text")
@@ -92,7 +92,7 @@ class TestMainWindow:
         main_window._on_text_changed()
 
         # Generate button should now be enabled
-        assert main_window.generate_btn.isEnabled()
+        assert main_window.toolbar.generate_btn.isEnabled()
 
     def test_character_count_updates(self, main_window):
         """Test that character count updates when text changes."""
@@ -100,15 +100,15 @@ class TestMainWindow:
         main_window.editor.setPlainText(test_text)
         main_window._on_text_changed()
 
-        assert main_window.char_label.text() == f"{len(test_text)} chars"
+        assert main_window.toolbar.char_label.text() == f"{len(test_text)} chars"
 
     @patch("ai_writer.ui.main_window.QMessageBox.warning")
     def test_generate_without_model_shows_warning(self, mock_warning, main_window):
         """Test that trying to generate without a model shows warning."""
         main_window.editor.setPlainText("Some text")
-        main_window.model_combo.clear()
-        main_window.model_combo.addItem("Select model...")
-        main_window.model_combo.setCurrentText("Select model...")
+        main_window.toolbar.model_combo.clear()
+        main_window.toolbar.model_combo.addItem("Select model...")
+        main_window.toolbar.model_combo.setCurrentText("Select model...")
 
         main_window.start_generation()
 
@@ -118,9 +118,9 @@ class TestMainWindow:
     def test_generate_without_text_shows_warning(self, mock_warning, main_window):
         """Test that trying to generate without text shows warning."""
         main_window.editor.setPlainText("")
-        main_window.model_combo.clear()
-        main_window.model_combo.addItem("test-model")
-        main_window.model_combo.setCurrentText("test-model")
+        main_window.toolbar.model_combo.clear()
+        main_window.toolbar.model_combo.addItem("test-model")
+        main_window.toolbar.model_combo.setCurrentText("test-model")
 
         main_window.start_generation()
 
@@ -137,8 +137,8 @@ class TestMainWindowModelOperations:
 
         # Check that models were added to combo
         combo_items = [
-            main_window.model_combo.itemText(i)
-            for i in range(main_window.model_combo.count())
+            main_window.toolbar.model_combo.itemText(i)
+            for i in range(main_window.toolbar.model_combo.count())
         ]
         assert combo_items == models
 
@@ -146,8 +146,8 @@ class TestMainWindowModelOperations:
         """Test handling of empty model list."""
         main_window._on_models_loaded([])
 
-        assert main_window.model_combo.itemText(0) == "No models found"
-        assert not main_window.generate_btn.isEnabled()
+        assert main_window.toolbar.model_combo.itemText(0) == "No models found"
+        assert not main_window.toolbar.generate_btn.isEnabled()
 
     def test_error_handling(self, main_window):
         """Test error handling."""
@@ -156,8 +156,8 @@ class TestMainWindowModelOperations:
 
             mock_critical.assert_called_once()
             # Generate button should be reset
-            assert main_window.generate_btn.text() == "✨ Generate"
-            assert main_window.generate_btn.isEnabled()
+            assert main_window.toolbar.generate_btn.text() == "✨ Generate"
+            assert main_window.toolbar.generate_btn.isEnabled()
 
 
 class TestMainWindowFileOperations:
@@ -172,7 +172,7 @@ class TestMainWindowFileOperations:
             main_window.editor.setPlainText("Test content")
             main_window._save_as_txt()
 
-            mock_save.assert_called_once_with("Test content")
+            mock_save.assert_called_once_with("Test content", file_path="test.txt")
 
     def test_save_docx_calls_file_manager(self, main_window):
         """Test that save DOCX calls file manager."""
@@ -183,7 +183,7 @@ class TestMainWindowFileOperations:
             main_window.editor.setPlainText("Test content")
             main_window._save_as_docx()
 
-            mock_save.assert_called_once_with("Test content")
+            mock_save.assert_called_once_with("Test content", file_path="test.docx")
 
 
 class TestMainWindowMenuBar:

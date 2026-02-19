@@ -32,11 +32,12 @@ class FileManager:
         self.parent = parent
         self.current_file: str | None = None
 
-    def save_as_txt(self, text: str) -> bool:
+    def save_as_txt(self, text: str, file_path: str | None = None) -> bool:
         """Save text as a .txt file.
 
         Args:
             text: Text content to save
+            file_path: Optional path to save to; if None, prompts user
 
         Returns:
             True if saved successfully, False otherwise
@@ -45,7 +46,9 @@ class FileManager:
             self._show_warning("No text to save!")
             return False
 
-        file_path = self._get_save_path("txt", "Text Files (*.txt)")
+        if not file_path:
+            file_path = self._get_save_path("txt", "Text Files (*.txt)")
+            
         if not file_path:
             return False
 
@@ -60,11 +63,12 @@ class FileManager:
             self._show_error(f"Failed to save: {str(e)}")
             return False
 
-    def save_as_docx(self, text: str) -> bool:
+    def save_as_docx(self, text: str, file_path: str | None = None) -> bool:
         """Save text as a .docx file.
 
         Args:
             text: Text content to save
+            file_path: Optional path to save to; if None, prompts user
 
         Returns:
             True if saved successfully, False otherwise
@@ -79,7 +83,9 @@ class FileManager:
             self._show_warning("No text to save!")
             return False
 
-        file_path = self._get_save_path("docx", "Word Documents (*.docx)")
+        if not file_path:
+            file_path = self._get_save_path("docx", "Word Documents (*.docx)")
+            
         if not file_path:
             return False
 

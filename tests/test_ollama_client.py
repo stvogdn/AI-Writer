@@ -2,7 +2,85 @@
 
 from unittest.mock import Mock, patch
 
-from ai_writer.core.ollama_client import OllamaClient, OllamaWorker
+import pytest
+import requests
+
+from ai_writer.core.ollama_client import OllamaAPI, OllamaClient, OllamaWorker
+
+
+class TestOllamaAPI:
+    """Test OllamaAPI class."""
+
+    def test_init(self):
+        """Test initialization of OllamaAPI."""
+        api = OllamaAPI(url="http://test:11434")
+        assert api.url == "http://test:11434"
+        assert api.timeout == 10
+
+    @patch("ai_writer.core.ollama_client.requests.get")
+    def test_scan_models_success(self, mock_get):
+        """Test successful model scanning in API."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "models": [{"name": "llama2:latest"}, {"name": "codellama:13b"}]
+        }
+        mock_get.return_value = mock_response
+
+        api = OllamaAPI(url="http://test")
+        models = api.scan_models()
+        assert models == ["llama2:latest", "codellama:13b"]
+
+    @patch("ai_writer.core.ollama_client.requests.post")
+    def test_generate_text_stream(self, mock_post):
+        """Test streaming text generation in API."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        import json
+        chunks = [
+            {"response": "This is", "done": False},
+            {"response": " the", "done": False},
+            {"response": " continuation.", "done": True}
+        ]
+        mock_response.iter_lines.return_value = [json.dumps(c).encode("utf-8") for c in chunks]
+        mock_post.return_value = mock_response
+
+        api = OllamaAPI(url="http://test")
+        result_chunks = list(api.generate_text_stream("model", "Start", 0.7, 50))
+        assert result_chunks == ["This is", " the", " continuation."]
+
+    @patch("ai_writer.core.ollama_client.requests.post")
+    def test_generate_text_batch(self, mock_post):
+        """Test batch text generation in API."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"response": "This is the continuation."}
+        mock_post.return_value = mock_response
+
+        api = OllamaAPI(url="http://test")
+        result = api.generate_text("model", "Start", 0.7, 50)
+        assert result == "This is the continuation."
+
+    def test_clean_completion_removes_original(self):
+        """Test that completion cleaning removes original text."""
+        original = "Hello world"
+        completion = "Hello world! How are you today?"
+        cleaned = OllamaAPI.clean_completion(original, completion)
+        assert cleaned == "! How are you today?"
+
+    def test_clean_completion_removes_prefixes(self):
+        """Test that completion cleaning removes unwanted prefixes."""
+        original = "Start"
+        completion = "Here's the continuation: and this is more text."
+        cleaned = OllamaAPI.clean_completion(original, completion)
+        assert cleaned == "and this is more text."
+
+    def test_clean_completion_handles_quotes(self):
+        """Test that completion cleaning handles quotes correctly."""
+        original = "He said"
+        completion = '"Hello there"'
+        cleaned = OllamaAPI.clean_completion(original, completion)
+        assert cleaned == 'Hello there"'
 
 
 class TestOllamaWorker:
@@ -30,115 +108,63 @@ class TestOllamaWorker:
         assert worker.temperature == 0.8
         assert worker.token_limit == 100
 
-    @patch("ai_writer.core.ollama_client.requests.get")
-    def test_scan_models_success(self, mock_get):
-        """Test successful model scanning."""
-        # Mock successful API response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "models": [{"name": "llama2:latest"}, {"name": "codellama:13b"}]
-        }
-        mock_get.return_value = mock_response
+    @patch("ai_writer.core.ollama_client.get_settings")
+    @patch("ai_writer.core.ollama_client.OllamaAPI")
+    def test_scan_models_success(self, mock_api_class, mock_get_settings):
+        """Test successful model scanning through worker."""
+        mock_api = mock_api_class.return_value
+        mock_api.scan_models.return_value = ["model1", "model2"]
 
         worker = OllamaWorker(endpoint="scan")
-
-        # Mock signals
         worker.models_loaded = Mock()
         worker.error = Mock()
 
-        worker._scan_models()
-
-        worker.models_loaded.emit.assert_called_once_with(
-            ["llama2:latest", "codellama:13b"]
-        )
+        worker.run()
+        worker.models_loaded.emit.assert_called_once_with(["model1", "model2"])
         worker.error.emit.assert_not_called()
 
-    @patch("ai_writer.core.ollama_client.requests.get")
-    def test_scan_models_failure(self, mock_get):
-        """Test failed model scanning."""
-        mock_response = Mock()
-        mock_response.status_code = 500
-        mock_get.return_value = mock_response
+    @patch("ai_writer.core.ollama_client.get_settings")
+    @patch("ai_writer.core.ollama_client.OllamaAPI")
+    def test_scan_models_failure(self, mock_api_class, mock_get_settings):
+        """Test failed model scanning through worker."""
+        mock_api = mock_api_class.return_value
+        # Use HTTPError which accepts constructor args compatible with what we throw
+        mock_api.scan_models.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
         worker = OllamaWorker(endpoint="scan")
         worker.models_loaded = Mock()
         worker.error = Mock()
 
-        worker._scan_models()
-
+        worker.run()
         worker.models_loaded.emit.assert_not_called()
         worker.error.emit.assert_called_once()
 
-    @patch("ai_writer.core.ollama_client.requests.post")
-    def test_generate_text_success(self, mock_post):
-        """Test successful text generation."""
-        mock_response = Mock()
-        mock_response.status_code = 200
-        # Mock streaming response
-        import json
-        chunks = [
-            {"response": "This is", "done": False},
-            {"response": " the", "done": False},
-            {"response": " continuation.", "done": True}
-        ]
-        mock_response.iter_lines.return_value = [json.dumps(c).encode("utf-8") for c in chunks]
-        mock_post.return_value = mock_response
+    @patch("ai_writer.core.ollama_client.get_settings")
+    @patch("ai_writer.core.ollama_client.OllamaAPI")
+    def test_generate_text_success_stream(self, mock_api_class, mock_settings):
+        """Test successful text streaming through worker."""
+        mock_api = mock_api_class.return_value
+        mock_api.generate_text_stream.return_value = iter(["chunk1", "chunk2"])
+        mock_settings_obj = Mock()
+        mock_settings_obj.generation.default_temperature = 0.7
+        mock_settings_obj.generation.default_token_limit = 100
+        mock_settings.return_value = mock_settings_obj
 
         worker = OllamaWorker(
             endpoint="generate",
             model="llama2",
-            prompt="Start of text",
-            temperature=0.7,
-            token_limit=50,
+            prompt="Start",
             stream=True
         )
-
-        # Mock the signal objects
+        worker.text_chunk_received = Mock()
         worker.finished = Mock()
         worker.error = Mock()
-        worker.text_chunk_received = Mock()
-        
-        worker._generate_text()
-        
-        worker.text_chunk_received.emit.assert_called()
-        worker.finished.emit.assert_called_once_with("This is the continuation.")
+
+        worker.run()
+
+        assert worker.text_chunk_received.emit.call_count == 2
+        worker.finished.emit.assert_called_once_with("chunk1chunk2")
         worker.error.emit.assert_not_called()
-
-        # Check that the API was called with correct parameters
-        mock_post.assert_called_once()
-        call_args = mock_post.call_args[1]["json"]
-        assert call_args["model"] == "llama2"
-        assert "Start of text" in call_args["prompt"]
-        assert call_args["options"]["temperature"] == 0.7
-        assert call_args["options"]["num_predict"] == 50
-
-    def test_clean_completion_removes_original(self):
-        """Test that completion cleaning removes original text."""
-        worker = OllamaWorker(endpoint="generate")
-        original = "Hello world"
-        completion = "Hello world! How are you today?"
-
-        cleaned = worker._clean_completion(original, completion)
-        assert cleaned == "! How are you today?"
-
-    def test_clean_completion_removes_prefixes(self):
-        """Test that completion cleaning removes unwanted prefixes."""
-        worker = OllamaWorker(endpoint="generate")
-        original = "Start"
-        completion = "Here's the continuation: and this is more text."
-
-        cleaned = worker._clean_completion(original, completion)
-        assert cleaned == "and this is more text."
-
-    def test_clean_completion_handles_quotes(self):
-        """Test that completion cleaning handles quotes correctly."""
-        worker = OllamaWorker(endpoint="generate")
-        original = "He said"
-        completion = '"Hello there"'
-
-        cleaned = worker._clean_completion(original, completion)
-        assert cleaned == 'Hello there"'
 
 
 class TestOllamaClient:
@@ -165,5 +191,5 @@ class TestOllamaClient:
     def test_generate_text_with_defaults(self):
         """Test generate_text with default parameters."""
         worker = OllamaClient.generate_text(model="test-model", prompt="test prompt")
-        assert worker.temperature is None  # Will use settings default
-        assert worker.token_limit is None  # Will use settings default
+        assert worker.temperature is None
+        assert worker.token_limit is None

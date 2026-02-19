@@ -28,7 +28,7 @@ from ai_writer.config import get_settings, save_settings
 from ai_writer.core import FileManager, OllamaClient, initialize_default_prompts
 from ai_writer.core.spell_checker import SpellChecker
 from ai_writer.ui.styles import DARK_THEME, LIGHT_THEME
-from ai_writer.ui.components import PromptSelector, SettingsDialog, PromptManagerDialog
+from ai_writer.ui.components import PromptSelector, SettingsDialog, PromptManagerDialog, MainMenuBar, EditorToolbar
 
 
 class MainWindow(QMainWindow):
@@ -93,82 +93,22 @@ class MainWindow(QMainWindow):
 
     def _setup_menubar(self):
         """Set up the application menu bar."""
-        menubar = self.menuBar()
-        
-        # File Menu
-        file_menu = menubar.addMenu("&File")
-        
-        new_action = QAction("&New", self)
-        new_action.setShortcut("Ctrl+N")
-        new_action.setStatusTip("Create a new document")
-        new_action.triggered.connect(self._on_new_file)
-        file_menu.addAction(new_action)
-        
-        open_action = QAction("&Open...", self)
-        open_action.setShortcut("Ctrl+O")
-        open_action.setStatusTip("Open an existing document")
-        open_action.triggered.connect(self._on_open_file)
-        file_menu.addAction(open_action)
-        
-        file_menu.addSeparator()
-        
-        save_action = QAction("&Save", self)
-        save_action.setShortcut("Ctrl+S")
-        save_action.setStatusTip("Save the current document")
-        save_action.triggered.connect(self._on_save_file)
-        file_menu.addAction(save_action)
-        
-        save_as_menu = file_menu.addMenu("Save &As")
-        
-        save_txt_action = QAction("Text File (.txt)", self)
-        save_txt_action.triggered.connect(self._save_as_txt)
-        save_as_menu.addAction(save_txt_action)
-        
-        if self.file_manager.has_docx_support:
-            save_docx_action = QAction("Word Document (.docx)", self)
-            save_docx_action.triggered.connect(self._save_as_docx)
-            save_as_menu.addAction(save_docx_action)
-        
-        file_menu.addSeparator()
-        
-        exit_action = QAction("E&xit", self)
-        exit_action.setShortcut("Ctrl+Q")
-        exit_action.setStatusTip("Exit the application")
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
-        
-        # Edit Menu
-        edit_menu = menubar.addMenu("&Edit")
-        
-        self.spell_check_action = QAction("&Spell Check", self)
-        self.spell_check_action.setCheckable(True)
-        if SpellChecker.is_available():
-            self.spell_check_action.setChecked(self.settings.spell_check.enabled)
-            self.spell_check_action.toggled.connect(self._on_spell_check_toggled)
-            edit_menu.addAction(self.spell_check_action)
-        else:
-            self.spell_check_action.setEnabled(False)
-            edit_menu.addAction(self.spell_check_action)
+        self.main_menu = MainMenuBar(self, has_docx_support=self.file_manager.has_docx_support)
+        self.setMenuBar(self.main_menu)
 
-        # Settings Menu
-        settings_menu = menubar.addMenu("&Settings")
+        # Connect signals
+        self.main_menu.new_file_requested.connect(self._on_new_file)
+        self.main_menu.open_file_requested.connect(self._on_open_file)
+        self.main_menu.save_file_requested.connect(self._on_save_file)
+        self.main_menu.save_as_txt_requested.connect(self._save_as_txt)
+        self.main_menu.save_as_docx_requested.connect(self._save_as_docx)
+        self.main_menu.exit_requested.connect(self.close)
         
-        gen_settings_action = QAction("&General Settings...", self)
-        gen_settings_action.setStatusTip("Configure temperature, tokens, and Ollama URL")
-        gen_settings_action.triggered.connect(self._show_settings_dialog)
-        settings_menu.addAction(gen_settings_action)
+        self.main_menu.spell_check_toggled.connect(self._on_spell_check_toggled)
         
-        settings_menu.addSeparator()
-        
-        prompts_action = QAction("&Manage Prompts...", self)
-        prompts_action.triggered.connect(self._open_prompt_manager)
-        settings_menu.addAction(prompts_action)
-        
-        settings_menu.addSeparator()
-        
-        about_action = QAction("&About AI-Writer", self)
-        about_action.triggered.connect(self._show_about_dialog)
-        settings_menu.addAction(about_action)
+        self.main_menu.general_settings_requested.connect(self._show_settings_dialog)
+        self.main_menu.manage_prompts_requested.connect(self._open_prompt_manager)
+        self.main_menu.about_requested.connect(self._show_about_dialog)
 
     def _on_new_file(self):
         """Clear document and reset state for a new file."""
@@ -203,18 +143,19 @@ class MainWindow(QMainWindow):
         """Save the current document."""
         text = self.editor.toPlainText()
         if self.file_manager.current_file:
-            # If we already have a file path, save to it
+            # If we already have a file path, save to it directly
             path = self.file_manager.current_file
             if path.endswith(".docx"):
-                success = self.file_manager.save_as_docx(text)
+                success = self.file_manager.save_as_docx(text, file_path=path)
             else:
-                success = self.file_manager.save_as_txt(text)
+                success = self.file_manager.save_as_txt(text, file_path=path)
             
             if success:
                 self.statusBar.showMessage(f"Saved to {path}")
         else:
             # Otherwise use default format (Save As)
-            self.file_manager.save_with_default_format(text)
+            if self.file_manager.save_with_default_format(text):
+                self.statusBar.showMessage(f"Saved to {self.file_manager.current_file}")
 
     def _on_spell_check_menu_toggled(self, enabled: bool):
         """Sync spell check menu toggle."""
@@ -251,7 +192,21 @@ class MainWindow(QMainWindow):
         editor_layout.setContentsMargins(0, 0, 0, 0)
 
         # Toolbar
-        self.toolbar = self._create_toolbar()
+        self.toolbar = EditorToolbar(
+            self, 
+            current_theme=self.current_theme, 
+            has_docx_support=self.file_manager.has_docx_support
+        )
+        
+        # Connect toolbar signals
+        self.toolbar.theme_toggled.connect(self.toggle_theme)
+        self.toolbar.scan_requested.connect(self.scan_models)
+        self.toolbar.model_changed.connect(self._on_text_changed)
+        self.toolbar.prompt_changed.connect(self._on_prompt_changed)
+        self.toolbar.generate_requested.connect(self.start_generation)
+        self.toolbar.save_txt_requested.connect(self._save_as_txt)
+        self.toolbar.save_docx_requested.connect(self._save_as_docx)
+        
         editor_layout.addWidget(self.toolbar)
 
         # Main text editor
@@ -266,95 +221,29 @@ class MainWindow(QMainWindow):
 
         return editor_widget
 
-    def _create_toolbar(self) -> QToolBar:
-        """Create the application toolbar."""
-        toolbar = QToolBar()
-        toolbar.setMovable(False)
-        toolbar.setIconSize(QSize(20, 20))
-
-        # Theme toggle
-        self.theme_btn = QPushButton("🌙" if self.current_theme == "light" else "☀️")
-        self.theme_btn.setFixedWidth(40)
-        self.theme_btn.clicked.connect(self.toggle_theme)
-        toolbar.addWidget(self.theme_btn)
-
-        toolbar.addSeparator()
-
-        # Model selection
-        self.model_combo = QComboBox()
-        self.model_combo.setMinimumWidth(180)
-        self.model_combo.addItem("Select model...")
-        toolbar.addWidget(QLabel("  Model: "))
-        toolbar.addWidget(self.model_combo)
-
-        self.scan_btn = QPushButton("🔄")
-        self.scan_btn.setToolTip("Refresh Models")
-        self.scan_btn.clicked.connect(self.scan_models)
-        toolbar.addWidget(self.scan_btn)
-
-        toolbar.addSeparator()
-
-        # Prompt Selector in Toolbar
-        toolbar.addWidget(QLabel("  Template: "))
-        self.prompt_selector = PromptSelector()
-        self.prompt_selector.prompt_changed.connect(self._on_prompt_changed)
-        toolbar.addWidget(self.prompt_selector)
-
-        toolbar.addSeparator()
-
-        # Generate button
-        self.generate_btn = QPushButton("✨ Generate")
-        self.generate_btn.setObjectName("generate-btn")
-        self.generate_btn.clicked.connect(self.start_generation)
-        self.generate_btn.setEnabled(False)
-        toolbar.addWidget(self.generate_btn)
-
-        toolbar.addSeparator()
-
-        # Save buttons
-        self.save_txt_btn = QPushButton("📄 Save .txt")
-        self.save_txt_btn.clicked.connect(self._save_as_txt)
-        toolbar.addWidget(self.save_txt_btn)
-
-        if self.file_manager.has_docx_support:
-            self.save_doc_btn = QPushButton("📕 Save .docx")
-            self.save_doc_btn.clicked.connect(self._save_as_docx)
-            toolbar.addWidget(self.save_doc_btn)
-        else:
-            toolbar.addWidget(QLabel("  (install python-docx for .docx)"))
-
-        # Stretch and character count
-        stretch_widget = QWidget()
-        stretch_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        toolbar.addWidget(stretch_widget)
-
-        self.char_label = QLabel("0 chars")
-        toolbar.addWidget(self.char_label)
-
-        return toolbar
-
     def _open_prompt_manager(self):
         """Open the prompt management dialog."""
         dialog = PromptManagerDialog(self)
         if dialog.exec_() == dialog.Accepted:
-            self.prompt_selector.refresh_prompts()
+            # Re-fetch prompts
+            self.toolbar.get_prompt_selector().refresh_prompts()
 
     def _connect_signals(self):
         """Connect additional signals."""
-        # Model selection change
-        self.model_combo.currentTextChanged.connect(self._on_text_changed)
+        # Removed inner combobox connection, its handled by toolbar now.
+        pass
 
     # Event handlers
     def toggle_theme(self):
         """Toggle between light and dark themes."""
         if self.current_theme == "light":
             self.current_theme = "dark"
-            self.theme_btn.setText("☀️")
             self.setStyleSheet(DARK_THEME)
         else:
             self.current_theme = "light"
-            self.theme_btn.setText("🌙")
             self.setStyleSheet(LIGHT_THEME)
+
+        self.toolbar.set_theme_icon(self.current_theme)
 
         # Update settings
         self.settings.ui.default_theme = self.current_theme
@@ -389,29 +278,25 @@ class MainWindow(QMainWindow):
             prompt_content: The selected prompt template content
         """
         # Update model filter in prompt selector when model changes
-        current_model = self.model_combo.currentText()
+        current_model = self.toolbar.current_model()
         if current_model and current_model not in ["Select model...", "No models found"]:
-            self.prompt_selector.set_model_filter(current_model)
+            self.toolbar.get_prompt_selector().set_model_filter(current_model)
 
     def _on_text_changed(self):
         """Handle text editor content change."""
         text = self.editor.toPlainText()
-        self.char_label.setText(f"{len(text)} chars")
+        self.toolbar.set_character_count(len(text))
 
-        model = self.model_combo.currentText()
+        model = self.toolbar.current_model()
         has_text = len(text.strip()) > 0
         has_model = model not in ["Select model...", "No models found"]
-        self.generate_btn.setEnabled(has_text and has_model)
-        
-        # Update prompt selector model filter when model changes
-        if has_model:
-            self.prompt_selector.set_model_filter(model)
+        self.toolbar.set_generate_enabled(has_text and has_model)
 
     # Ollama operations
     def scan_models(self):
         """Scan for available Ollama models."""
         self.statusBar.showMessage("Scanning for models...")
-        self.model_combo.clear()
+        self.toolbar.set_models([]) # Clear combo box
 
         self.worker = OllamaClient.scan_models()
         self.worker.models_loaded.connect(self._on_models_loaded)
@@ -420,29 +305,27 @@ class MainWindow(QMainWindow):
 
     def _on_models_loaded(self, models):
         """Handle successful model loading."""
-        self.model_combo.clear()
         if not models:
-            self.model_combo.addItem("No models found")
+            self.toolbar.set_models([])
             self.statusBar.showMessage("❌ No models available")
-            self.generate_btn.setEnabled(False)
+            self.toolbar.set_generate_enabled(False)
         else:
-            self.model_combo.addItems(models)
-            self.statusBar.showMessage(f"✓ {len(models)} models available")
-
-            # Set default model if configured
+            default_model = None
             if (
                 self.settings.ollama.default_model
                 and self.settings.ollama.default_model in models
             ):
-                index = models.index(self.settings.ollama.default_model)
-                self.model_combo.setCurrentIndex(index)
+                default_model = self.settings.ollama.default_model
+
+            self.toolbar.set_models(models, default_model)
+            self.statusBar.showMessage(f"✓ {len(models)} models available")
 
             self._on_text_changed()
 
     def start_generation(self):
         """Start text generation process."""
         text = self.editor.toPlainText()
-        model = self.model_combo.currentText()
+        model = self.toolbar.current_model()
 
         if not text.strip() or model in ["Select model...", "No models found"]:
             QMessageBox.warning(
@@ -455,8 +338,8 @@ class MainWindow(QMainWindow):
         # Prepare the prompt - use template if selected
         full_prompt = self._prepare_prompt_for_generation(text)
 
-        self.generate_btn.setEnabled(False)
-        self.generate_btn.setText("⏳ Generating...")
+        self.toolbar.set_generate_enabled(False)
+        self.toolbar.set_generate_text("⏳ Generating...")
         self.statusBar.showMessage(
             f"AI is writing (Temp: {self.temperature:.2f}, "
             f"Tokens: {self.token_limit})..."
@@ -499,7 +382,7 @@ class MainWindow(QMainWindow):
             Final prompt to send to the model
         """
         # Get selected prompt template 
-        prompt_template = self.prompt_selector.get_selected_prompt_content()
+        prompt_template = self.toolbar.get_prompt_selector().get_selected_prompt_content()
         
         if prompt_template and prompt_template.strip():
             # Combine template with user text
@@ -556,14 +439,20 @@ class MainWindow(QMainWindow):
 
     def _reset_generate_button(self):
         """Reset generate button to normal state."""
-        self.generate_btn.setEnabled(True)
-        self.generate_btn.setText("✨ Generate")
+        self.toolbar.set_generate_enabled(True)
+        self.toolbar.set_generate_text("✨ Generate")
 
     # File operations
     def _save_as_txt(self):
         """Save document as text file."""
         text = self.editor.toPlainText()
-        if self.file_manager.save_as_txt(text):
+        path = self.file_manager.current_file
+        if path:
+            success = self.file_manager.save_as_txt(text, file_path=path)
+        else:
+            success = self.file_manager.save_as_txt(text)
+            
+        if success:
             self.statusBar.showMessage(
                 f"✓ Saved to {self.file_manager.current_file_path}"
             )
@@ -571,7 +460,13 @@ class MainWindow(QMainWindow):
     def _save_as_docx(self):
         """Save document as Word file."""
         text = self.editor.toPlainText()
-        if self.file_manager.save_as_docx(text):
+        path = self.file_manager.current_file
+        if path:
+            success = self.file_manager.save_as_docx(text, file_path=path)
+        else:
+            success = self.file_manager.save_as_docx(text)
+            
+        if success:
             self.statusBar.showMessage(
                 f"✓ Saved to {self.file_manager.current_file_path}"
             )
