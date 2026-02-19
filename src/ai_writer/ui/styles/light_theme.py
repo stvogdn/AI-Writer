@@ -2,7 +2,7 @@
 
 LIGHT_THEME = """
 QMainWindow { background-color: #f5f5f7; }
-QWidget { font-family: 'Segoe UI', 'Roboto', 'Helvetica', sans-serif; color: #333; }
+QWidget { font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #333; }
 
 QToolBar {
     background-color: #ffffff;

@@ -19,9 +19,7 @@ class TestOllamaSettings:
     def test_custom_values(self):
         """Test custom values can be set."""
         settings = OllamaSettings(
-            url="http://custom:8080",
-            timeout=60,
-            default_model="llama2"
+            url="http://custom:8080", timeout=60, default_model="llama2"
         )
         assert settings.url == "http://custom:8080"
         assert settings.timeout == 60
@@ -52,7 +50,7 @@ class TestSettings:
 
     def test_save_and_load(self):
         """Test saving and loading configuration."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             config_file = f.name
 
         try:

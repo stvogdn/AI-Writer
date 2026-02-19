@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 # Try to import docx support
 try:
     from docx import Document
+
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
@@ -49,7 +50,7 @@ class FileManager:
             return False
 
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(text)
             self.current_file = file_path
             self._show_success(f"Saved to {file_path}")
@@ -83,12 +84,12 @@ class FileManager:
 
         try:
             doc = Document()
-            doc.add_heading('AI Writer Document', 0)
-            doc.add_paragraph(f'Created: {datetime.now().strftime("%Y-%m-%d %H:%M")}')
+            doc.add_heading("AI Writer Document", 0)
+            doc.add_paragraph(f"Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
             doc.add_paragraph()
 
             # Split into paragraphs and add to document
-            paragraphs = text.split('\n')
+            paragraphs = text.split("\n")
             for para in paragraphs:
                 if para.strip():
                     doc.add_paragraph(para)
@@ -130,12 +131,12 @@ class FileManager:
         try:
             path = Path(file_path)
 
-            if path.suffix.lower() in ['.txt', '.md']:
-                with open(file_path, encoding='utf-8') as f:
+            if path.suffix.lower() in [".txt", ".md"]:
+                with open(file_path, encoding="utf-8") as f:
                     content = f.read()
-            elif path.suffix.lower() == '.docx' and DOCX_AVAILABLE:
+            elif path.suffix.lower() == ".docx" and DOCX_AVAILABLE:
                 doc = Document(file_path)
-                content = '\n'.join([para.text for para in doc.paragraphs])
+                content = "\n".join([para.text for para in doc.paragraphs])
             else:
                 self._show_error(f"Unsupported file format: {path.suffix}")
                 return None
@@ -156,15 +157,12 @@ class FileManager:
         Returns:
             Selected file path or None if cancelled
         """
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         default_name = f"document_{timestamp}.{extension}"
 
         if self.parent:
             file_path, _ = QFileDialog.getSaveFileName(
-                self.parent,
-                f"Save as {extension.upper()}",
-                default_name,
-                file_filter
+                self.parent, f"Save as {extension.upper()}", default_name, file_filter
             )
         else:
             file_path = ""  # Fallback for testing

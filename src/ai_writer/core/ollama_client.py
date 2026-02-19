@@ -15,8 +15,8 @@ class OllamaWorker(QThread):
 
     # Signals
     models_loaded = pyqtSignal(list)  # List of model names
-    finished = pyqtSignal(str)        # Generated text
-    error = pyqtSignal(str)           # Error message
+    finished = pyqtSignal(str)  # Generated text
+    error = pyqtSignal(str)  # Error message
 
     def __init__(
         self,
@@ -24,7 +24,7 @@ class OllamaWorker(QThread):
         model: str | None = None,
         prompt: str | None = None,
         temperature: float | None = None,
-        token_limit: int | None = None
+        token_limit: int | None = None,
     ):
         """Initialize the Ollama worker.
 
@@ -66,7 +66,7 @@ class OllamaWorker(QThread):
             response = requests.get(f"{self.ollama_url}/api/tags", timeout=10)
             if response.status_code == 200:
                 data = response.json()
-                models = [model['name'] for model in data.get('models', [])]
+                models = [model["name"] for model in data.get("models", [])]
                 self.models_loaded.emit(models)
             else:
                 self.error.emit(f"API Error: {response.status_code}")
@@ -105,21 +105,16 @@ class OllamaWorker(QThread):
                 "model": self.model,
                 "prompt": full_prompt,
                 "stream": False,
-                "options": {
-                    "num_predict": token_limit,
-                    "temperature": temperature
-                }
+                "options": {"num_predict": token_limit, "temperature": temperature},
             }
 
             response = requests.post(
-                f"{self.ollama_url}/api/generate",
-                json=payload,
-                timeout=self.timeout
+                f"{self.ollama_url}/api/generate", json=payload, timeout=self.timeout
             )
 
             if response.status_code == 200:
                 data = response.json()
-                completion = data.get('response', '')
+                completion = data.get("response", "")
                 cleaned = self._clean_completion(self.prompt, completion)
                 self.finished.emit(cleaned)
             else:
@@ -134,17 +129,21 @@ class OllamaWorker(QThread):
 
         # Remove original text if it appears at the start of completion
         if completion_stripped.startswith(original_stripped):
-            completion_stripped = completion_stripped[len(original_stripped):].strip()
+            completion_stripped = completion_stripped[len(original_stripped) :].strip()
 
         # Remove common prefixes that the model might add
         prefixes = [
-            "here's the continuation:", "continuation:", "continued:",
-            "here is the completion:", "here's the completion:",
-            "the continuation is:", "completion:"
+            "here's the continuation:",
+            "continuation:",
+            "continued:",
+            "here is the completion:",
+            "here's the completion:",
+            "the continuation is:",
+            "completion:",
         ]
         for prefix in prefixes:
             if completion_stripped.lower().startswith(prefix):
-                completion_stripped = completion_stripped[len(prefix):].strip()
+                completion_stripped = completion_stripped[len(prefix) :].strip()
 
         # Handle quote matching
         if completion_stripped.startswith('"') and not original_stripped.endswith('"'):
@@ -166,7 +165,7 @@ class OllamaClient:
         model: str,
         prompt: str,
         temperature: float | None = None,
-        token_limit: int | None = None
+        token_limit: int | None = None,
     ) -> OllamaWorker:
         """Create a worker to generate text.
 
@@ -184,5 +183,5 @@ class OllamaClient:
             model=model,
             prompt=prompt,
             temperature=temperature,
-            token_limit=token_limit
+            token_limit=token_limit,
         )

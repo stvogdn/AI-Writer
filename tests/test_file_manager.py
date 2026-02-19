@@ -34,10 +34,10 @@ class TestFileManager:
         # Should return True if python-docx is available
         assert isinstance(self.file_manager.has_docx_support, bool)
 
-    @patch('ai_writer.core.file_manager.QFileDialog.getSaveFileName')
+    @patch("ai_writer.core.file_manager.QFileDialog.getSaveFileName")
     def test_save_as_txt_success(self, mock_get_save_filename):
         """Test successful TXT file saving."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             mock_get_save_filename.return_value = (f.name, "")
 
             try:
@@ -46,13 +46,13 @@ class TestFileManager:
                 assert self.file_manager.current_file == f.name
 
                 # Verify file content
-                with open(f.name, encoding='utf-8') as file:
+                with open(f.name, encoding="utf-8") as file:
                     content = file.read()
                     assert content == self.test_text
             finally:
                 Path(f.name).unlink(missing_ok=True)
 
-    @patch('ai_writer.core.file_manager.QFileDialog.getSaveFileName')
+    @patch("ai_writer.core.file_manager.QFileDialog.getSaveFileName")
     def test_save_as_txt_cancelled(self, mock_get_save_filename):
         """Test cancelled TXT file saving."""
         mock_get_save_filename.return_value = ("", "")  # Cancelled dialog
@@ -68,7 +68,7 @@ class TestFileManager:
 
     def test_load_txt_file(self):
         """Test loading TXT file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(self.test_text)
             f.flush()
 
@@ -93,8 +93,9 @@ class TestFileManager:
 
 
 @pytest.mark.skipif(
-    not hasattr(FileManager(), 'has_docx_support') or not FileManager().has_docx_support,
-    reason="python-docx not available"
+    not hasattr(FileManager(), "has_docx_support")
+    or not FileManager().has_docx_support,
+    reason="python-docx not available",
 )
 class TestFileManagerDocx:
     """Test DOCX functionality when available."""
@@ -104,10 +105,10 @@ class TestFileManagerDocx:
         self.file_manager = FileManager()
         self.test_text = "This is a test document.\\nWith multiple lines."
 
-    @patch('ai_writer.core.file_manager.QFileDialog.getSaveFileName')
+    @patch("ai_writer.core.file_manager.QFileDialog.getSaveFileName")
     def test_save_as_docx_success(self, mock_get_save_filename):
         """Test successful DOCX file saving."""
-        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
             mock_get_save_filename.return_value = (f.name, "")
 
             try:

@@ -22,26 +22,22 @@ def main():
     print("🚀 Setting up AI Writer development environment")
 
     # Check if we're in a virtual environment
-    if not hasattr(sys, 'real_prefix') and sys.base_prefix == sys.prefix:
+    if not hasattr(sys, "real_prefix") and sys.base_prefix == sys.prefix:
         print("⚠️  Warning: Not in a virtual environment")
         response = input("Continue anyway? (y/N): ").strip().lower()
-        if response != 'y':
+        if response != "y":
             print("Exiting. Please create and activate a virtual environment first.")
             return
 
     # Install development dependencies
     success = run_command(
-        ["uv", "sync", "--dev"],
-        "Installing development dependencies with uv"
+        ["uv", "sync", "--dev"], "Installing development dependencies with uv"
     )
     if not success:
         return
 
     # Install pre-commit hooks
-    success = run_command(
-        ["pre-commit", "install"],
-        "Installing pre-commit hooks"
-    )
+    success = run_command(["pre-commit", "install"], "Installing pre-commit hooks")
     if not success:
         return
 
@@ -51,26 +47,20 @@ def main():
     # Run black
     run_command(
         ["uv", "run", "black", "src/", "tests/", "scripts/"],
-        "Formatting code with black"
+        "Formatting code with black",
     )
 
     # Run ruff
     run_command(
         ["uv", "run", "ruff", "check", "src/", "tests/", "--fix"],
-        "Linting code with ruff"
+        "Linting code with ruff",
     )
 
     # Run mypy
-    run_command(
-        ["uv", "run", "mypy", "src/ai_writer/"],
-        "Type checking with mypy"
-    )
+    run_command(["uv", "run", "mypy", "src/ai_writer/"], "Type checking with mypy")
 
     # Run tests
-    run_command(
-        ["uv", "run", "pytest", "tests/", "-v"],
-        "Running test suite"
-    )
+    run_command(["uv", "run", "pytest", "tests/", "-v"], "Running test suite")
 
     print("\n🎉 Development environment setup complete!")
     print("\n📋 Available commands:")

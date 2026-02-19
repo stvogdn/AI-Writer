@@ -22,7 +22,7 @@ class TestOllamaWorker:
             model="llama2",
             prompt="Test prompt",
             temperature=0.8,
-            token_limit=100
+            token_limit=100,
         )
         assert worker.endpoint == "generate"
         assert worker.model == "llama2"
@@ -30,17 +30,14 @@ class TestOllamaWorker:
         assert worker.temperature == 0.8
         assert worker.token_limit == 100
 
-    @patch('ai_writer.core.ollama_client.requests.get')
+    @patch("ai_writer.core.ollama_client.requests.get")
     def test_scan_models_success(self, mock_get):
         """Test successful model scanning."""
         # Mock successful API response
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "models": [
-                {"name": "llama2:latest"},
-                {"name": "codellama:13b"}
-            ]
+            "models": [{"name": "llama2:latest"}, {"name": "codellama:13b"}]
         }
         mock_get.return_value = mock_response
 
@@ -57,7 +54,7 @@ class TestOllamaWorker:
         )
         worker.error.emit.assert_not_called()
 
-    @patch('ai_writer.core.ollama_client.requests.get')
+    @patch("ai_writer.core.ollama_client.requests.get")
     def test_scan_models_failure(self, mock_get):
         """Test failed model scanning."""
         mock_response = Mock()
@@ -73,7 +70,7 @@ class TestOllamaWorker:
         worker.models_loaded.emit.assert_not_called()
         worker.error.emit.assert_called_once()
 
-    @patch('ai_writer.core.ollama_client.requests.post')
+    @patch("ai_writer.core.ollama_client.requests.post")
     def test_generate_text_success(self, mock_post):
         """Test successful text generation."""
         mock_response = Mock()
@@ -88,23 +85,26 @@ class TestOllamaWorker:
             model="llama2",
             prompt="Start of text",
             temperature=0.7,
-            token_limit=50
+            token_limit=50,
         )
-        worker.finished = Mock()
-        worker.error = Mock()
 
-        worker._generate_text()
+        # Mock the signal emissions
+        with (
+            patch.object(worker.finished, "emit") as mock_finished,
+            patch.object(worker.error, "emit") as mock_error,
+        ):
+            worker._generate_text()
 
-        worker.finished.emit.assert_called_once()
-        worker.error.emit.assert_not_called()
+            mock_finished.assert_called_once()
+            mock_error.assert_not_called()
 
         # Check that the API was called with correct parameters
         mock_post.assert_called_once()
-        call_args = mock_post.call_args[1]['json']
-        assert call_args['model'] == "llama2"
-        assert "Start of text" in call_args['prompt']
-        assert call_args['options']['temperature'] == 0.7
-        assert call_args['options']['num_predict'] == 50
+        call_args = mock_post.call_args[1]["json"]
+        assert call_args["model"] == "llama2"
+        assert "Start of text" in call_args["prompt"]
+        assert call_args["options"]["temperature"] == 0.7
+        assert call_args["options"]["num_predict"] == 50
 
     def test_clean_completion_removes_original(self):
         """Test that completion cleaning removes original text."""
@@ -146,10 +146,7 @@ class TestOllamaClient:
     def test_generate_text_returns_worker(self):
         """Test that generate_text returns an OllamaWorker."""
         worker = OllamaClient.generate_text(
-            model="test-model",
-            prompt="test prompt",
-            temperature=0.5,
-            token_limit=200
+            model="test-model", prompt="test prompt", temperature=0.5, token_limit=200
         )
         assert isinstance(worker, OllamaWorker)
         assert worker.endpoint == "generate"
@@ -160,9 +157,6 @@ class TestOllamaClient:
 
     def test_generate_text_with_defaults(self):
         """Test generate_text with default parameters."""
-        worker = OllamaClient.generate_text(
-            model="test-model",
-            prompt="test prompt"
-        )
+        worker = OllamaClient.generate_text(model="test-model", prompt="test prompt")
         assert worker.temperature is None  # Will use settings default
-        assert worker.token_limit is None   # Will use settings default
+        assert worker.token_limit is None  # Will use settings default

@@ -1,6 +1,7 @@
 # AI Writer User Guide
 
 ## Table of Contents
+
 - [Getting Started](#getting-started)
 - [Basic Usage](#basic-usage)
 - [Features](#features)
@@ -18,11 +19,13 @@
    - Install a model: `ollama pull llama2`
 
 2. **Install AI Writer**:
+
    ```bash
    pip install ai-writer
    ```
 
 3. **Launch the application**:
+
    ```bash
    ai-writer
    ```
@@ -108,33 +111,39 @@ Different models have different strengths:
 ### Common Issues
 
 **"Cannot connect to Ollama" error:**
+
 - Make sure Ollama is running: `ollama serve`
 - Check if Ollama is on a different port (default: 11434)
 - Restart Ollama service
 
 **"No models found":**
+
 - Install a model: `ollama pull llama2`
 - Click the refresh button 🔄 to rescan
 - Verify models are listed: `ollama list`
 
 **"Generation failed" errors:**
+
 - Try a different model
 - Reduce token limit if out of memory
 - Check Ollama logs for detailed errors
 
 **Save buttons disabled:**
+
 - Make sure you have text in the editor
 - For .docx saving, install: `pip install python-docx`
 
 ### Performance Issues
 
 **Slow generation:**
+
 - Use smaller models (7B vs 13B parameters)
 - Reduce token limit
 - Lower temperature slightly
 - Ensure sufficient RAM/VRAM
 
 **UI freezing:**
+
 - Generation runs in background threads
 - If UI freezes, restart the application
 - Check system resources
@@ -142,6 +151,7 @@ Different models have different strengths:
 ### Configuration
 
 Settings are automatically saved to:
+
 - **Windows**: `%APPDATA%\AI-Writer\settings.json`
 - **macOS/Linux**: `~/.config/ai-writer/settings.json`
 
@@ -181,11 +191,13 @@ While AI Writer doesn't currently implement custom shortcuts, you can use standa
 ### Advanced Usage
 
 **Custom prompting techniques:**
+
 - End sentences with specific words to guide continuation
 - Use formatting cues (bullet points, headers) to guide structure
 - Include style instructions in your text
 
 **Model comparison:**
+
 - Try the same continuation with different models
 - Compare creativity levels and writing styles
 - Use specialized models for specific content types
@@ -196,4 +208,4 @@ While AI Writer doesn't currently implement custom shortcuts, you can use standa
 - **Ollama Documentation**: For model-specific questions  
 - **Community**: Share tips and get help from other users
 
-Remember: AI Writer is a tool to enhance your writing, not replace it. The best results come from collaboration between human creativity and AI assistance!
+Remember: AI Writer is a tool to enhance your writing, not replace it. The best results come from collaboration between human creativity and AI assistance!\n

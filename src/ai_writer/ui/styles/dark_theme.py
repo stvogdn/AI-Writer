@@ -2,7 +2,7 @@
 
 DARK_THEME = """
 QMainWindow { background-color: #1e1e1e; }
-QWidget { font-family: 'Segoe UI', 'Roboto', 'Helvetica', sans-serif; color: #e0e0e0; }
+QWidget { font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #e0e0e0; }
 
 QToolBar {
     background-color: #2c2c2c;

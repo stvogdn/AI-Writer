@@ -36,36 +36,26 @@ def main():
     clean_build_dirs()
 
     # Run tests first
-    success = run_command(
-        ["uv", "run", "pytest", "tests/", "-v"],
-        "Running test suite"
-    )
+    success = run_command(["uv", "run", "pytest", "tests/", "-v"], "Running test suite")
     if not success:
         print("❌ Tests failed. Fix issues before building.")
         return
 
     # Run code quality checks
     success = run_command(
-        ["uv", "run", "ruff", "check", "src/", "tests/"],
-        "Linting code"
+        ["uv", "run", "ruff", "check", "src/", "tests/"], "Linting code"
     )
     if not success:
         print("❌ Linting failed. Fix issues before building.")
         return
 
     # Type checking
-    success = run_command(
-        ["uv", "run", "mypy", "src/ai_writer/"],
-        "Type checking"
-    )
+    success = run_command(["uv", "run", "mypy", "src/ai_writer/"], "Type checking")
     if not success:
         print("⚠️  Type checking failed, but continuing build...")
 
     # Build wheel
-    success = run_command(
-        ["uv", "build"],
-        "Building wheel package"
-    )
+    success = run_command(["uv", "build"], "Building wheel package")
     if not success:
         return
 

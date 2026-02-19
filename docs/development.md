@@ -3,7 +3,8 @@
 ## Development Environment Setup
 
 ### Prerequisites
-- Python 3.11+ 
+
+- Python 3.11+
 - Git
 - [uv](https://github.com/astral-sh/uv) - Fast Python package manager
 - Ollama (for runtime functionality)
@@ -11,25 +12,28 @@
 ### Setting Up
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/Laszlobeer/AI-Writer.git
    cd AI-Writer
    ```
 
 2. Create and activate virtual environment:
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. Set up development environment with uv:
+
    ```bash
    uv sync --dev
    ```
 
 ## Project Structure
 
-```
+```text
 ai-writer/
 ├── src/ai_writer/          # Main application package
 │   ├── config/             # Configuration management
@@ -98,6 +102,7 @@ uv run python scripts/build.py
 ```
 
 This will:
+
 1. Run all tests
 2. Perform code quality checks  
 3. Build wheel and source distributions
@@ -180,15 +185,18 @@ The application uses a layered configuration system:
 ### Common Issues
 
 **Ollama Connection Errors:**
+
 - Ensure Ollama is running: `ollama serve`
 - Check if models are installed: `ollama list`
 - Verify connection URL in settings
 
 **PyQt5 Issues:**
+
 - For display issues on high-DPI screens, ensure `QApplication.setAttribute` calls are made
 - For theming issues, check CSS selector specificity
 
 **Import Errors:**
+
 - Ensure package is installed in development mode: `pip install -e .`
 - Check Python path and virtual environment activation
 

@@ -28,11 +28,13 @@ A sleek desktop application for AI-assisted writing powered by **Ollama** and bu
 ## 📋 Requirements
 
 ### System Requirements
+
 - **Python 3.11+**
 - **Ollama** installed and running locally
 - **Operating System**: Windows, macOS, or Linux
 
 ### Python Dependencies
+
 All dependencies are automatically installed with the package.
 
 ---
@@ -44,6 +46,7 @@ All dependencies are automatically installed with the package.
 First, ensure Ollama is installed and running on your system:
 
 **macOS/Linux:**
+
 ```bash
 curl -fsSL https://ollama.ai/install.sh | sh
 ollama serve
@@ -74,6 +77,7 @@ That's it! The application will automatically detect your Ollama models and you 
 ### Development Setup
 
 1. **Clone and set up the development environment:**
+
    ```bash
    git clone https://github.com/Laszlobeer/AI-Writer.git
    cd AI-Writer
@@ -81,13 +85,14 @@ That's it! The application will automatically detect your Ollama models and you 
    ```
 
 2. **Run the application in development mode:**
+
    ```bash
    uv run python -m ai_writer.main
    ```
 
 ### Project Structure
 
-```
+```text
 ai-writer/
 ├── src/ai_writer/          # Main application package
 │   ├── config/             # Configuration management
@@ -111,6 +116,7 @@ This project maintains high code quality standards:
 - **pre-commit** hooks for automated quality checks
 
 Run quality checks:
+
 ```bash
 uv run pytest tests/                      # Run tests
 uv run black src/ tests/ scripts/         # Format code
@@ -131,6 +137,7 @@ uv run mypy src/ai_writer/               # Type checking
 ## 🔧 Configuration
 
 AI Writer automatically saves your preferences to:
+
 - **Windows**: `%APPDATA%\AI-Writer\settings.json`
 - **macOS/Linux**: `~/.config/ai-writer/settings.json`
 
@@ -143,14 +150,17 @@ All settings are configurable through the UI and persist between sessions.
 ### Common Issues
 
 **"Cannot connect to Ollama":**
+
 - Ensure Ollama is running: `ollama serve`
 - Check if Ollama is on the correct port (default: 11434)
 
 **"No models found":**
+
 - Install a model: `ollama pull llama2`
 - Click the refresh button in the application
 
 **Performance issues:**
+
 - Use smaller models for faster generation
 - Reduce token limit if running out of memory
 - Ensure sufficient system resources
@@ -206,8 +216,8 @@ This version represents a complete restructuring of the AI Writer project:
 
 See the full [Changelog](CHANGELOG.md) for detailed changes.
 
-
 **Windows/macOS:**
+
 ```bash
 # Download from https://ollama.ai
 # Then pull a model
@@ -215,6 +225,7 @@ ollama pull thewindmom/hermes-3-llama-3.1-8b
 ```
 
 **Linux:**
+
 ```bash
 curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull thewindmom/hermes-3-llama-3.1-8b
@@ -246,6 +257,7 @@ pip install -r requirements.txt
 ```
 
 Or install manually:
+
 ```bash
 pip install PyQt5 requests python-docx
 ```
@@ -289,7 +301,7 @@ python ai writer.py
 |---------|--------------|-------------|
 | Temperature | 0.7 | Balance between creativity and coherence |
 | Token Limit | 2000 | Maximum tokens in AI response |
-| Ollama URL | http://localhost:11434 | Local Ollama server endpoint |
+| Ollama URL | <http://localhost:11434> | Local Ollama server endpoint |
 
 ### Customizing Settings
 
@@ -308,47 +320,54 @@ DEFAULT_TEMPERATURE = 0.7
 - **0.5 - 1.0** ⚖️ Balanced creativity and coherence
 - **1.0 - 2.0** 🎨 Highly creative, unpredictable output
 
-
-
 ---
 
 ## 🖼️ Screenshots
 
 ### Light Mode
+
 ![Light Mode](lightmode.PNG)
 
 ### Dark Mode
+
 ![Dark Mode](darkmode.PNG)
-
-
 
 ---
 
 ## 🔧 Troubleshooting
 
 ### Ollama Connection Error
+
 ```
 Cannot connect to Ollama. Is it running?
 ```
+
 **Solution:** Ensure Ollama service is running:
+
 ```bash
 ollama serve
 ```
 
 ### No Models Found
+
 ```
 No models available
 ```
+
 **Solution:** Pull a model:
+
 ```bash
 ollama run thewindmom/hermes-3-llama-3.1-8b
 ```
 
 ### python-docx Not Available
+
 ```
 install python-docx for .docx
 ```
+
 **Solution:** Install the package:
+
 ```bash
 pip install python-docx
 ```
@@ -367,7 +386,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [PyQt5](https://www.riverbankcomputing.com/software/pyqt/) - GUI framework
 
 ---
-
-
-
-

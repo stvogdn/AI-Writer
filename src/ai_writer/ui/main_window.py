@@ -37,12 +37,14 @@ class MainWindow(QMainWindow):
         self._init_state()
         self._setup_ui()
         self._connect_signals()
-        
+
         # Start model scan
         self.setWindowTitle("AI Writer")
+
+    def _setup_window(self):
+        """Set up basic window properties."""
         self.setMinimumSize(
-            self.settings.ui.window_width,
-            self.settings.ui.window_height
+            self.settings.ui.window_width, self.settings.ui.window_height
         )
         self.current_theme = self.settings.ui.default_theme
         self.setStyleSheet(LIGHT_THEME if self.current_theme == "light" else DARK_THEME)
@@ -238,7 +240,7 @@ class MainWindow(QMainWindow):
             "• Place cursor where you want AI to continue",
             "• Lower temp = more focused",
             "• Higher temp = more creative",
-            "• Save your work frequently"
+            "• Save your work frequently",
         ]
         for tip in tips:
             layout.addWidget(QLabel(tip))
@@ -311,8 +313,10 @@ class MainWindow(QMainWindow):
             self.statusBar.showMessage(f"✓ {len(models)} models available")
 
             # Set default model if configured
-            if (self.settings.ollama.default_model and
-                self.settings.ollama.default_model in models):
+            if (
+                self.settings.ollama.default_model
+                and self.settings.ollama.default_model in models
+            ):
                 index = models.index(self.settings.ollama.default_model)
                 self.model_combo.setCurrentIndex(index)
 
@@ -342,7 +346,7 @@ class MainWindow(QMainWindow):
             model=model,
             prompt=text,
             temperature=self.temperature,
-            token_limit=self.token_limit
+            token_limit=self.token_limit,
         )
         self.worker.finished.connect(self._on_generation_finished)
         self.worker.error.connect(self._on_error)

@@ -22,7 +22,7 @@ def qapp():
 @pytest.fixture
 def main_window(qapp):
     """Create MainWindow instance for testing."""
-    with patch('ai_writer.ui.main_window.get_settings') as mock_settings:
+    with patch("ai_writer.ui.main_window.get_settings") as mock_settings:
         # Mock settings to avoid loading real config
         mock_settings.return_value = Mock()
         mock_settings.return_value.ui.window_width = 1000
@@ -37,7 +37,7 @@ def main_window(qapp):
         mock_settings.return_value.generation.max_token_limit = 2000
         mock_settings.return_value.ollama.default_model = None
 
-        with patch('ai_writer.ui.main_window.OllamaClient'):
+        with patch("ai_writer.ui.main_window.OllamaClient"):
             window = MainWindow()
             yield window
             window.close()
@@ -117,7 +117,7 @@ class TestMainWindow:
 
         assert main_window.char_label.text() == f"{len(test_text)} chars"
 
-    @patch('ai_writer.ui.main_window.QMessageBox.warning')
+    @patch("ai_writer.ui.main_window.QMessageBox.warning")
     def test_generate_without_model_shows_warning(self, mock_warning, main_window):
         """Test that trying to generate without a model shows warning."""
         main_window.editor.setPlainText("Some text")
@@ -129,7 +129,7 @@ class TestMainWindow:
 
         mock_warning.assert_called_once()
 
-    @patch('ai_writer.ui.main_window.QMessageBox.warning')
+    @patch("ai_writer.ui.main_window.QMessageBox.warning")
     def test_generate_without_text_shows_warning(self, mock_warning, main_window):
         """Test that trying to generate without text shows warning."""
         main_window.editor.setPlainText("")
@@ -151,8 +151,10 @@ class TestMainWindowModelOperations:
         main_window._on_models_loaded(models)
 
         # Check that models were added to combo
-        combo_items = [main_window.model_combo.itemText(i)
-                      for i in range(main_window.model_combo.count())]
+        combo_items = [
+            main_window.model_combo.itemText(i)
+            for i in range(main_window.model_combo.count())
+        ]
         assert combo_items == models
 
     def test_models_loaded_empty(self, main_window):
@@ -164,7 +166,7 @@ class TestMainWindowModelOperations:
 
     def test_error_handling(self, main_window):
         """Test error handling."""
-        with patch('ai_writer.ui.main_window.QMessageBox.critical') as mock_critical:
+        with patch("ai_writer.ui.main_window.QMessageBox.critical") as mock_critical:
             main_window._on_error("Test error message")
 
             mock_critical.assert_called_once()
@@ -178,7 +180,7 @@ class TestMainWindowFileOperations:
 
     def test_save_txt_calls_file_manager(self, main_window):
         """Test that save TXT calls file manager."""
-        with patch.object(main_window.file_manager, 'save_as_txt') as mock_save:
+        with patch.object(main_window.file_manager, "save_as_txt") as mock_save:
             mock_save.return_value = True
             main_window.file_manager.current_file_path = "test.txt"
 
@@ -189,7 +191,7 @@ class TestMainWindowFileOperations:
 
     def test_save_docx_calls_file_manager(self, main_window):
         """Test that save DOCX calls file manager."""
-        with patch.object(main_window.file_manager, 'save_as_docx') as mock_save:
+        with patch.object(main_window.file_manager, "save_as_docx") as mock_save:
             mock_save.return_value = True
             main_window.file_manager.current_file_path = "test.docx"
 
