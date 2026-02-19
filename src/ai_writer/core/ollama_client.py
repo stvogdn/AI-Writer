@@ -18,6 +18,8 @@ class OllamaWorker(QThread):
     finished = pyqtSignal(str)  # Generated text
     error = pyqtSignal(str)  # Error message
 
+    text_chunk_received = pyqtSignal(str)  # Real-time text chunks
+
     def __init__(
         self,
         endpoint: str,
@@ -25,6 +27,7 @@ class OllamaWorker(QThread):
         prompt: str | None = None,
         temperature: float | None = None,
         token_limit: int | None = None,
+        stream: bool = True,
     ):
         """Initialize the Ollama worker.
 
@@ -35,6 +38,7 @@ class OllamaWorker(QThread):
             prompt: Input text (required for generation)
             temperature: Generation temperature (optional)
             token_limit: Maximum tokens to generate (optional)
+            stream: Whether to stream the response (default: True)
         """
         super().__init__()
         self.endpoint = endpoint
@@ -42,6 +46,7 @@ class OllamaWorker(QThread):
         self.prompt = prompt
         self.temperature = temperature
         self.token_limit = token_limit
+        self.stream = stream
 
         # Get settings
         settings = get_settings()
@@ -104,19 +109,43 @@ class OllamaWorker(QThread):
             payload = {
                 "model": self.model,
                 "prompt": full_prompt,
-                "stream": False,
+                "stream": self.stream,
                 "options": {"num_predict": token_limit, "temperature": temperature},
             }
 
             response = requests.post(
-                f"{self.ollama_url}/api/generate", json=payload, timeout=self.timeout
+                f"{self.ollama_url}/api/generate", 
+                json=payload, 
+                timeout=self.timeout,
+                stream=self.stream
             )
 
             if response.status_code == 200:
-                data = response.json()
-                completion = data.get("response", "")
-                cleaned = self._clean_completion(self.prompt, completion)
-                self.finished.emit(cleaned)
+                full_completion = ""
+                
+                if self.stream:
+                    import json
+                    for line in response.iter_lines():
+                        if line:
+                            data = json.loads(line.decode("utf-8"))
+                            chunk = data.get("response", "")
+                            
+                            # Clean the first chunk if needed (remove model chatter)
+                            if not full_completion:
+                                chunk = self._clean_completion(self.prompt, chunk)
+                            
+                            if chunk:
+                                full_completion += chunk
+                                self.text_chunk_received.emit(chunk)
+                            
+                            if data.get("done"):
+                                break
+                    self.finished.emit(full_completion)
+                else:
+                    data = response.json()
+                    completion = data.get("response", "")
+                    cleaned = self._clean_completion(self.prompt, completion)
+                    self.finished.emit(cleaned)
             else:
                 self.error.emit(f"Generation Error: {response.status_code}")
         except requests.exceptions.Timeout:
@@ -166,6 +195,7 @@ class OllamaClient:
         prompt: str,
         temperature: float | None = None,
         token_limit: int | None = None,
+        stream: bool = True,
     ) -> OllamaWorker:
         """Create a worker to generate text.
 
@@ -174,6 +204,7 @@ class OllamaClient:
             prompt: Input text to continue
             temperature: Generation temperature (optional)
             token_limit: Maximum tokens to generate (optional)
+            stream: Whether to stream the response (default: True)
 
         Returns:
             OllamaWorker instance ready to start
@@ -184,4 +215,5 @@ class OllamaClient:
             prompt=prompt,
             temperature=temperature,
             token_limit=token_limit,
+            stream=stream,
         )

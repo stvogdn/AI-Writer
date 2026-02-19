@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ai-writer"
-version = "0.1.0"
+version = "0.2.0"
 description = "A sleek desktop application for AI-assisted writing powered by Ollama and built with PyQt5"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -29,6 +29,8 @@ dependencies = [
     "pyqt5>=5.15.11",
     "python-docx>=1.2.0",
     "requests>=2.32.5",
+    "pyenchant>=3.2.0",
+    "enchant>=0.0.1",
 ]
 
 [project.optional-dependencies]

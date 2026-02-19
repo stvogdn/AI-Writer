@@ -75,9 +75,14 @@ class TestOllamaWorker:
         """Test successful text generation."""
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "response": "This is the generated continuation."
-        }
+        # Mock streaming response
+        import json
+        chunks = [
+            {"response": "This is", "done": False},
+            {"response": " the", "done": False},
+            {"response": " continuation.", "done": True}
+        ]
+        mock_response.iter_lines.return_value = [json.dumps(c).encode("utf-8") for c in chunks]
         mock_post.return_value = mock_response
 
         worker = OllamaWorker(
@@ -86,17 +91,19 @@ class TestOllamaWorker:
             prompt="Start of text",
             temperature=0.7,
             token_limit=50,
+            stream=True
         )
 
-        # Mock the signal emissions
-        with (
-            patch.object(worker.finished, "emit") as mock_finished,
-            patch.object(worker.error, "emit") as mock_error,
-        ):
-            worker._generate_text()
-
-            mock_finished.assert_called_once()
-            mock_error.assert_not_called()
+        # Mock the signal objects
+        worker.finished = Mock()
+        worker.error = Mock()
+        worker.text_chunk_received = Mock()
+        
+        worker._generate_text()
+        
+        worker.text_chunk_received.emit.assert_called()
+        worker.finished.emit.assert_called_once_with("This is the continuation.")
+        worker.error.emit.assert_not_called()
 
         # Check that the API was called with correct parameters
         mock_post.assert_called_once()

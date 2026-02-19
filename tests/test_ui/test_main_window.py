@@ -35,7 +35,11 @@ def main_window(qapp):
         mock_settings.return_value.generation.max_temperature = 2.0
         mock_settings.return_value.generation.min_token_limit = 10
         mock_settings.return_value.generation.max_token_limit = 2000
-        mock_settings.return_value.ollama.default_model = None
+        mock_settings.return_value.ollama.url = "http://localhost:11434"
+        mock_settings.return_value.ollama.default_model = ""
+        mock_settings.return_value.spell_check.enabled = False
+        mock_settings.return_value.spell_check.language = "en_US"
+        mock_settings.return_value.spell_check.highlight_color = "#ff0000"
 
         with patch("ai_writer.ui.main_window.OllamaClient"):
             window = MainWindow()
@@ -182,7 +186,7 @@ class TestMainWindowFileOperations:
         """Test that save TXT calls file manager."""
         with patch.object(main_window.file_manager, "save_as_txt") as mock_save:
             mock_save.return_value = True
-            main_window.file_manager.current_file_path = "test.txt"
+            main_window.file_manager.current_file = "test.txt"
 
             main_window.editor.setPlainText("Test content")
             main_window._save_as_txt()
@@ -193,7 +197,7 @@ class TestMainWindowFileOperations:
         """Test that save DOCX calls file manager."""
         with patch.object(main_window.file_manager, "save_as_docx") as mock_save:
             mock_save.return_value = True
-            main_window.file_manager.current_file_path = "test.docx"
+            main_window.file_manager.current_file = "test.docx"
 
             main_window.editor.setPlainText("Test content")
             main_window._save_as_docx()

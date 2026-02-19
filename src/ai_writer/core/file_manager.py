@@ -17,7 +17,7 @@ try:
 except ImportError:
     DOCX_AVAILABLE = False
 
-from ai_writer.config import get_settings
+from ai_writer.config import get_settings, save_settings
 
 
 class FileManager:
@@ -53,6 +53,7 @@ class FileManager:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(text)
             self.current_file = file_path
+            self._update_last_save_folder(file_path)
             self._show_success(f"Saved to {file_path}")
             return True
         except Exception as e:
@@ -83,7 +84,8 @@ class FileManager:
             return False
 
         try:
-            doc = Document()
+
+            doc = Document() # type: ignore
             doc.add_heading("AI Writer Document", 0)
             doc.add_paragraph(f"Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
             doc.add_paragraph()
@@ -96,6 +98,7 @@ class FileManager:
 
             doc.save(file_path)
             self.current_file = file_path
+            self._update_last_save_folder(file_path)
             self._show_success(f"Saved to {file_path}")
             return True
         except Exception as e:
@@ -135,7 +138,7 @@ class FileManager:
                 with open(file_path, encoding="utf-8") as f:
                     content = f.read()
             elif path.suffix.lower() == ".docx" and DOCX_AVAILABLE:
-                doc = Document(file_path)
+                doc = Document(file_path) # type: ignore
                 content = "\n".join([para.text for para in doc.paragraphs])
             else:
                 self._show_error(f"Unsupported file format: {path.suffix}")
@@ -159,15 +162,29 @@ class FileManager:
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         default_name = f"document_{timestamp}.{extension}"
+        
+        # Use last save folder as default directory
+        settings = get_settings()
+        default_dir = settings.file.last_save_folder or ""
+        default_path = str(Path(default_dir) / default_name) if default_dir else default_name
 
-        if self.parent:
-            file_path, _ = QFileDialog.getSaveFileName(
-                self.parent, f"Save as {extension.upper()}", default_name, file_filter
-            )
-        else:
-            file_path = ""  # Fallback for testing
+        file_path, _ = QFileDialog.getSaveFileName(
+            self.parent, f"Save as {extension.upper()}", default_path, file_filter
+        )
 
         return file_path if file_path else None
+
+    def _update_last_save_folder(self, file_path: str) -> None:
+        """Update the last save folder in settings.
+        
+        Args:
+            file_path: Full path to the saved file
+        """
+        folder_path = str(Path(file_path).parent)
+        settings = get_settings()
+        settings.file.last_save_folder = folder_path
+        save_settings()
+
 
     def _show_warning(self, message: str) -> None:
         """Show a warning message."""
@@ -199,3 +216,14 @@ class FileManager:
     def current_file_path(self) -> str | None:
         """Get the current file path."""
         return self.current_file
+
+    def _update_last_save_folder(self, file_path: str) -> None:
+        """Update the last save folder in settings.
+        
+        Args:
+            file_path: Full path to the saved file
+        """
+        folder_path = str(Path(file_path).parent)
+        settings = get_settings()
+        settings.file.last_save_folder = folder_path
+        save_settings()

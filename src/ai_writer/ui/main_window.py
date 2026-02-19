@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -21,8 +22,10 @@ from PyQt5.QtWidgets import (
 )
 
 from ai_writer.config import get_settings, save_settings
-from ai_writer.core import FileManager, OllamaClient
+from ai_writer.core import FileManager, OllamaClient, initialize_default_prompts
+from ai_writer.core.spell_checker import SpellChecker
 from ai_writer.ui.styles import DARK_THEME, LIGHT_THEME
+from ai_writer.ui.components.prompt_selector import PromptSelector
 
 
 class MainWindow(QMainWindow):
@@ -33,10 +36,20 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.settings = get_settings()
         self.file_manager = FileManager(self)
+        
+        # Initialize default prompts if none exist
+        initialize_default_prompts()
+        
+        # Initialize spell checker
+        self.spell_checker = None
+        
         self._setup_window()
         self._init_state()
         self._setup_ui()
         self._connect_signals()
+        
+        # Initialize spell checker after UI is set up
+        self._init_spell_checker()
 
         # Start model scan
         self.setWindowTitle("AI Writer")
@@ -175,6 +188,21 @@ class MainWindow(QMainWindow):
         self._add_token_control(sidebar_layout)
         sidebar_layout.addSpacing(20)
 
+        # Prompt selector
+        self.prompt_selector = PromptSelector()
+        self.prompt_selector.prompt_changed.connect(self._on_prompt_changed)
+        sidebar_layout.addWidget(self.prompt_selector)
+        sidebar_layout.addSpacing(20)
+
+        # Ollama URL control
+        self._add_ollama_url_control(sidebar_layout)
+        sidebar_layout.addSpacing(20)
+        
+        # Spell check control (if available)
+        if SpellChecker.is_available():
+            self._add_spell_check_control(sidebar_layout)
+            sidebar_layout.addSpacing(20)
+
         # Tips section
         self._add_tips_section(sidebar_layout)
         sidebar_layout.addStretch()
@@ -230,6 +258,55 @@ class MainWindow(QMainWindow):
         token_hints.setStyleSheet("font-size: 11px; color: #888;")
         layout.addWidget(token_hints)
 
+    def _add_ollama_url_control(self, layout):
+        """Add Ollama URL control to sidebar."""
+        url_title = QLabel("🔗 Ollama URL")
+        url_title.setObjectName("sidebar-title")
+        layout.addWidget(url_title)
+
+        self.ollama_url_input = QLineEdit()
+        self.ollama_url_input.setText(self.settings.ollama.url)
+        self.ollama_url_input.setPlaceholderText("http://localhost:11434")
+        self.ollama_url_input.editingFinished.connect(self._on_ollama_url_changed)
+        layout.addWidget(self.ollama_url_input)
+
+        url_hints = QLabel("Ollama server URL")
+        url_hints.setStyleSheet("font-size: 11px; color: #888;")
+        layout.addWidget(url_hints)
+    
+    def _add_spell_check_control(self, layout):
+        """Add spell check control to sidebar."""
+        spell_title = QLabel("📝 Spell Check")
+        spell_title.setObjectName("sidebar-title")
+        layout.addWidget(spell_title)
+        
+        # Enable/disable checkbox
+        from PyQt5.QtWidgets import QCheckBox
+        self.spell_check_checkbox = QCheckBox("Enable spell checking")
+        self.spell_check_checkbox.setChecked(self.settings.spell_check.enabled)
+        self.spell_check_checkbox.toggled.connect(self._on_spell_check_toggled)
+        layout.addWidget(self.spell_check_checkbox)
+        
+        # Language selection
+        if SpellChecker.is_available():
+            from PyQt5.QtWidgets import QComboBox
+            lang_layout = QHBoxLayout()
+            lang_layout.addWidget(QLabel("Language:"))
+            
+            self.spell_lang_combo = QComboBox()
+            available_langs = SpellChecker.get_available_languages()
+            for lang_tag in available_langs:
+                self.spell_lang_combo.addItem(lang_tag)
+            
+            # Set current language
+            current_index = self.spell_lang_combo.findText(self.settings.spell_check.language)
+            if current_index >= 0:
+                self.spell_lang_combo.setCurrentIndex(current_index)
+            
+            self.spell_lang_combo.currentTextChanged.connect(self._on_spell_language_changed)
+            lang_layout.addWidget(self.spell_lang_combo)
+            layout.addLayout(lang_layout)
+
     def _add_tips_section(self, layout):
         """Add tips section to sidebar."""
         info_title = QLabel("ℹ️ Tips")
@@ -280,6 +357,25 @@ class MainWindow(QMainWindow):
         self.settings.generation.default_token_limit = self.token_limit
         save_settings()
 
+    def _on_ollama_url_changed(self):
+        """Handle Ollama URL change."""
+        new_url = self.ollama_url_input.text().strip()
+        if new_url and new_url != self.settings.ollama.url:
+            self.settings.ollama.url = new_url
+            save_settings()
+            self.statusBar.showMessage(f"Ollama URL updated to {new_url}")
+    
+    def _on_prompt_changed(self, prompt_content: str):
+        """Handle prompt template selection change.
+        
+        Args:
+            prompt_content: The selected prompt template content
+        """
+        # Update model filter in prompt selector when model changes
+        current_model = self.model_combo.currentText()
+        if current_model and current_model not in ["Select model...", "No models found"]:
+            self.prompt_selector.set_model_filter(current_model)
+
     def _on_text_changed(self):
         """Handle text editor content change."""
         text = self.editor.toPlainText()
@@ -289,6 +385,10 @@ class MainWindow(QMainWindow):
         has_text = len(text.strip()) > 0
         has_model = model not in ["Select model...", "No models found"]
         self.generate_btn.setEnabled(has_text and has_model)
+        
+        # Update prompt selector model filter when model changes
+        if has_model:
+            self.prompt_selector.set_model_filter(model)
 
     # Ollama operations
     def scan_models(self):
@@ -335,6 +435,9 @@ class MainWindow(QMainWindow):
 
         self.generation_cursor_pos = len(text)
 
+        # Prepare the prompt - use template if selected
+        full_prompt = self._prepare_prompt_for_generation(text)
+
         self.generate_btn.setEnabled(False)
         self.generate_btn.setText("⏳ Generating...")
         self.statusBar.showMessage(
@@ -344,38 +447,85 @@ class MainWindow(QMainWindow):
 
         self.worker = OllamaClient.generate_text(
             model=model,
-            prompt=text,
+            prompt=full_prompt,
             temperature=self.temperature,
             token_limit=self.token_limit,
+            stream=True
         )
+        self.worker.text_chunk_received.connect(self._on_text_chunk_received)
         self.worker.finished.connect(self._on_generation_finished)
         self.worker.error.connect(self._on_error)
         self.worker.start()
 
-    def _on_generation_finished(self, completion: str):
-        """Handle successful text generation."""
-        if not completion.strip():
-            self.statusBar.showMessage("⚠️ No completion generated")
-            self._reset_generate_button()
-            return
-
+    def _on_text_chunk_received(self, chunk: str):
+        """Handle real-time text chunk from generator."""
         cursor = self.editor.textCursor()
-        cursor.setPosition(self.generation_cursor_pos)
-
-        text = self.editor.toPlainText()
-        if (
-            text
-            and not text[-1].isspace()
-            and completion
-            and not completion[0].isspace()
-        ):
-            cursor.insertText(" ")
-
-        cursor.insertText(completion)
+        cursor.movePosition(cursor.End)
+        
+        # Add space if needed for first chunk
+        if self.generation_cursor_pos == len(self.editor.toPlainText()):
+            text = self.editor.toPlainText()
+            if text and not text[-1].isspace() and chunk and not chunk[0].isspace():
+                cursor.insertText(" ")
+        
+        cursor.insertText(chunk)
         self.editor.setTextCursor(cursor)
+        self.editor.ensureCursorVisible()
+    
+    def _prepare_prompt_for_generation(self, user_text: str) -> str:
+        """Prepare the final prompt for generation.
+        
+        Args:
+            user_text: The user's input text
+            
+        Returns:
+            Final prompt to send to the model
+        """
+        # Get selected prompt template 
+        prompt_template = self.prompt_selector.get_selected_prompt_content()
+        
+        if prompt_template and prompt_template.strip():
+            # Combine template with user text
+            return f"{prompt_template}\n\n{user_text}"
+        else:
+            # No template selected, use text directly
+            return user_text
+        
+    def _init_spell_checker(self):
+        """Initialize the spell checker for the text editor."""
+        if SpellChecker.is_available() and self.settings.spell_check.enabled:
+            self.spell_checker = SpellChecker(self.editor)
+            self.spell_checker.set_enabled(self.settings.spell_check.enabled)
+            self.spell_checker.set_dictionary(self.settings.spell_check.language)
+            
+            # Set highlight color from settings
+            from PyQt5.QtGui import QColor
+            color = QColor(self.settings.spell_check.highlight_color)
+            self.spell_checker.set_highlight_color(color)
+    
+    def _on_spell_check_toggled(self, enabled: bool):
+        """Handle spell check enable/disable toggle."""
+        self.settings.spell_check.enabled = enabled
+        save_settings()
+        
+        if self.spell_checker:
+            self.spell_checker.set_enabled(enabled)
+        elif enabled and SpellChecker.is_available():
+            # Initialize spell checker if it wasn't created before
+            self._init_spell_checker()
+    
+    def _on_spell_language_changed(self, language: str):
+        """Handle spell check language change."""
+        self.settings.spell_check.language = language
+        save_settings()
+        
+        if self.spell_checker:
+            self.spell_checker.set_dictionary(language)
 
+    def _on_generation_finished(self, completion: str):
+        """Handle completion of text generation."""
         self.statusBar.showMessage(
-            f"✓ Completion added (Temp: {self.temperature:.2f}, "
+            f"✓ Generation complete (Temp: {self.temperature:.2f}, "
             f"Tokens: {self.token_limit})"
         )
         self._reset_generate_button()
