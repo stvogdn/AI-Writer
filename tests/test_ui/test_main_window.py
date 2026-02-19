@@ -61,28 +61,9 @@ class TestMainWindow:
         # Generate button should be disabled initially
         assert not main_window.generate_btn.isEnabled()
 
-        # Default temperature should be set
-        assert main_window.temperature == 0.7
-
         # Default token limit should be set
         assert main_window.token_limit == 140
 
-    def test_temperature_slider_changes_value(self, main_window):
-        """Test that temperature slider changes the temperature value."""
-
-        # Simulate slider movement
-        main_window.temp_slider.setValue(50)  # 0.5 temperature
-
-        assert main_window.temperature == 0.5
-        assert main_window.temp_value_label.text() == "0.50"
-
-    def test_token_limit_spinbox_changes_value(self, main_window):
-        """Test that token limit spinbox changes the token limit."""
-
-        # Change spinbox value
-        main_window.token_spinbox.setValue(200)
-
-        assert main_window.token_limit == 200
 
     def test_theme_toggle(self, main_window):
         """Test theme toggling functionality."""
@@ -203,3 +184,48 @@ class TestMainWindowFileOperations:
             main_window._save_as_docx()
 
             mock_save.assert_called_once_with("Test content")
+
+
+class TestMainWindowMenuBar:
+    """Test menu bar functionality."""
+
+    def test_menubar_exists(self, main_window):
+        """Test that the menu bar and expected menus exist."""
+        menubar = main_window.menuBar()
+        assert menubar is not None
+        
+        actions = menubar.actions()
+        menu_titles = [action.text() for action in actions]
+        assert "&File" in menu_titles
+        assert "&Edit" in menu_titles
+        assert "&Settings" in menu_titles
+
+    def test_file_new_clears_editor(self, main_window):
+        """Test that File -> New clears the editor."""
+        main_window.editor.setPlainText("Some text")
+        
+        # Mock QMessageBox to auto-accept
+        with patch("ai_writer.ui.main_window.QMessageBox.question") as mock_question:
+            mock_question.return_value = 16384  # QMessageBox.Yes
+            main_window._on_new_file()
+            
+        assert main_window.editor.toPlainText() == ""
+        assert main_window.file_manager.current_file is None
+
+    def test_file_open_calls_file_manager(self, main_window):
+        """Test that File -> Open calls file manager load_file."""
+        with patch("PyQt5.QtWidgets.QFileDialog.getOpenFileName") as mock_dialog:
+            mock_dialog.return_value = ("test.txt", "Text Files (*.txt)")
+            with patch.object(main_window.file_manager, "load_file") as mock_load:
+                mock_load.return_value = "Loaded content"
+                main_window._on_open_file()
+                
+                mock_load.assert_called_once()
+                assert main_window.editor.toPlainText() == "Loaded content"
+
+
+    def test_about_dialog_shows(self, main_window):
+        """Test that About dialog shows."""
+        with patch("ai_writer.ui.main_window.QMessageBox.about") as mock_about:
+            main_window._show_about_dialog()
+            mock_about.assert_called_once()

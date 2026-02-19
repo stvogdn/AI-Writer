@@ -33,47 +33,21 @@ class PromptSelector(QWidget):
     
     def _setup_ui(self):
         """Setup the UI components."""
-        layout = QVBoxLayout(self)
-        layout.setSpacing(8)
+        layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Title
-        title = QLabel("🎯 Prompt Template")
-        title.setObjectName("sidebar-title")
-        layout.addWidget(title)
-        
-        # Prompt selection row
-        selection_layout = QHBoxLayout()
+        layout.setSpacing(4)
         
         # Dropdown for prompt selection
         self.prompt_combo = QComboBox()
         self.prompt_combo.setMinimumWidth(140)
         self.prompt_combo.setToolTip("Select a prompt template")
-        selection_layout.addWidget(self.prompt_combo)
+        layout.addWidget(self.prompt_combo)
         
         # Manage prompts button
         self.manage_btn = QPushButton("⚙️")
         self.manage_btn.setFixedSize(QSize(24, 24))
         self.manage_btn.setToolTip("Manage prompt templates")
-        selection_layout.addWidget(self.manage_btn)
-        
-        layout.addLayout(selection_layout)
-        
-        # Selected prompt preview (first few words)
-        self.preview_label = QLabel("No prompt selected")
-        self.preview_label.setStyleSheet("""
-            QLabel {
-                font-size: 11px; 
-                color: #888;
-                background: rgba(128, 128, 128, 30);
-                padding: 4px 6px;
-                border-radius: 3px;
-                border: 1px solid rgba(128, 128, 128, 50);
-            }
-        """)
-        self.preview_label.setWordWrap(True)
-        self.preview_label.setMaximumHeight(40)
-        layout.addWidget(self.preview_label)
+        layout.addWidget(self.manage_btn)
     
     def _connect_signals(self):
         """Connect widget signals."""
@@ -163,17 +137,15 @@ class PromptSelector(QWidget):
         self.prompt_changed.emit(content)
     
     def _update_preview(self):
-        """Update the prompt preview label."""
+        """Update the prompt tooltip with preview."""
         content = self.get_selected_prompt_content()
-        
         if not content:
-            self.preview_label.setText("No prompt selected")
+            self.prompt_combo.setToolTip("No prompt selected")
         else:
-            # Show first ~50 characters as preview
             preview = content.strip()
-            if len(preview) > 50:
-                preview = preview[:47] + "..."
-            self.preview_label.setText(preview)
+            if len(preview) > 100:
+                preview = preview[:97] + "..."
+            self.prompt_combo.setToolTip(preview)
     
     def _open_prompt_manager(self):
         """Open the prompt management dialog."""

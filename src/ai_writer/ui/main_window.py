@@ -2,12 +2,15 @@
 
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import (
+    QAction,
     QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
+    QMenuBar,
     QMessageBox,
     QPushButton,
     QSizePolicy,
@@ -25,7 +28,7 @@ from ai_writer.config import get_settings, save_settings
 from ai_writer.core import FileManager, OllamaClient, initialize_default_prompts
 from ai_writer.core.spell_checker import SpellChecker
 from ai_writer.ui.styles import DARK_THEME, LIGHT_THEME
-from ai_writer.ui.components.prompt_selector import PromptSelector
+from ai_writer.ui.components import PromptSelector, SettingsDialog, PromptManagerDialog
 
 
 class MainWindow(QMainWindow):
@@ -50,6 +53,9 @@ class MainWindow(QMainWindow):
         
         # Initialize spell checker after UI is set up
         self._init_spell_checker()
+
+        # Set up menu bar
+        self._setup_menubar()
 
         # Start model scan
         self.setWindowTitle("AI Writer")
@@ -76,20 +82,166 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        splitter = QSplitter(Qt.Horizontal)
-
-        # Create main editor area and sidebar
+        # Create main editor area
         editor_widget = self._create_editor_area()
-        sidebar = self._create_sidebar()
-
-        splitter.addWidget(editor_widget)
-        splitter.addWidget(sidebar)
-        main_layout.addWidget(splitter)
+        main_layout.addWidget(editor_widget)
 
         # Status bar
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
         self.statusBar.showMessage("Ready")
+
+    def _setup_menubar(self):
+        """Set up the application menu bar."""
+        menubar = self.menuBar()
+        
+        # File Menu
+        file_menu = menubar.addMenu("&File")
+        
+        new_action = QAction("&New", self)
+        new_action.setShortcut("Ctrl+N")
+        new_action.setStatusTip("Create a new document")
+        new_action.triggered.connect(self._on_new_file)
+        file_menu.addAction(new_action)
+        
+        open_action = QAction("&Open...", self)
+        open_action.setShortcut("Ctrl+O")
+        open_action.setStatusTip("Open an existing document")
+        open_action.triggered.connect(self._on_open_file)
+        file_menu.addAction(open_action)
+        
+        file_menu.addSeparator()
+        
+        save_action = QAction("&Save", self)
+        save_action.setShortcut("Ctrl+S")
+        save_action.setStatusTip("Save the current document")
+        save_action.triggered.connect(self._on_save_file)
+        file_menu.addAction(save_action)
+        
+        save_as_menu = file_menu.addMenu("Save &As")
+        
+        save_txt_action = QAction("Text File (.txt)", self)
+        save_txt_action.triggered.connect(self._save_as_txt)
+        save_as_menu.addAction(save_txt_action)
+        
+        if self.file_manager.has_docx_support:
+            save_docx_action = QAction("Word Document (.docx)", self)
+            save_docx_action.triggered.connect(self._save_as_docx)
+            save_as_menu.addAction(save_docx_action)
+        
+        file_menu.addSeparator()
+        
+        exit_action = QAction("E&xit", self)
+        exit_action.setShortcut("Ctrl+Q")
+        exit_action.setStatusTip("Exit the application")
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+        
+        # Edit Menu
+        edit_menu = menubar.addMenu("&Edit")
+        
+        self.spell_check_action = QAction("&Spell Check", self)
+        self.spell_check_action.setCheckable(True)
+        if SpellChecker.is_available():
+            self.spell_check_action.setChecked(self.settings.spell_check.enabled)
+            self.spell_check_action.toggled.connect(self._on_spell_check_toggled)
+            edit_menu.addAction(self.spell_check_action)
+        else:
+            self.spell_check_action.setEnabled(False)
+            edit_menu.addAction(self.spell_check_action)
+
+        # Settings Menu
+        settings_menu = menubar.addMenu("&Settings")
+        
+        gen_settings_action = QAction("&General Settings...", self)
+        gen_settings_action.setStatusTip("Configure temperature, tokens, and Ollama URL")
+        gen_settings_action.triggered.connect(self._show_settings_dialog)
+        settings_menu.addAction(gen_settings_action)
+        
+        settings_menu.addSeparator()
+        
+        prompts_action = QAction("&Manage Prompts...", self)
+        prompts_action.triggered.connect(self._open_prompt_manager)
+        settings_menu.addAction(prompts_action)
+        
+        settings_menu.addSeparator()
+        
+        about_action = QAction("&About AI-Writer", self)
+        about_action.triggered.connect(self._show_about_dialog)
+        settings_menu.addAction(about_action)
+
+    def _on_new_file(self):
+        """Clear document and reset state for a new file."""
+        if self.editor.toPlainText().strip():
+            reply = QMessageBox.question(
+                self, "New Document",
+                "Start a new document? Any unsaved changes will be lost.",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            )
+            if reply == QMessageBox.No:
+                return
+                
+        self.editor.clear()
+        self.file_manager.current_file = None
+        self.statusBar.showMessage("New document created")
+
+    def _on_open_file(self):
+        """Open a file dialog and load the selected file."""
+        from PyQt5.QtWidgets import QFileDialog
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open File", "", 
+            "All Supported (*.txt *.docx *.md);;Text Files (*.txt);;Word Documents (*.docx);;Markdown (*.md)"
+        )
+        
+        if file_path:
+            content = self.file_manager.load_file(file_path)
+            if content is not None:
+                self.editor.setPlainText(content)
+                self.statusBar.showMessage(f"Loaded {file_path}")
+
+    def _on_save_file(self):
+        """Save the current document."""
+        text = self.editor.toPlainText()
+        if self.file_manager.current_file:
+            # If we already have a file path, save to it
+            path = self.file_manager.current_file
+            if path.endswith(".docx"):
+                success = self.file_manager.save_as_docx(text)
+            else:
+                success = self.file_manager.save_as_txt(text)
+            
+            if success:
+                self.statusBar.showMessage(f"Saved to {path}")
+        else:
+            # Otherwise use default format (Save As)
+            self.file_manager.save_with_default_format(text)
+
+    def _on_spell_check_menu_toggled(self, enabled: bool):
+        """Sync spell check menu toggle."""
+        self._on_spell_check_toggled(enabled)
+
+    def _show_settings_dialog(self):
+        """Show the integrated settings dialog."""
+        dialog = SettingsDialog(self)
+        if dialog.exec_() == SettingsDialog.Accepted:
+            # Refresh state if needed (though SettingsDialog saves to global settings)
+            self.temperature = self.settings.generation.default_temperature
+            self.token_limit = self.settings.generation.default_token_limit
+            self.statusBar.showMessage("Settings updated", 3000)
+
+    def _show_about_dialog(self):
+        """Show about information."""
+        QMessageBox.about(
+            self, "About AI-Writer",
+            "<h3>AI-Writer</h3>"
+            "<p>A modern writing assistant powered by AI.</p>"
+            "<p>Version 0.3.1</p>"
+            "<p>Requires Ollama to be running locally.</p>"
+        )
+
+    def _show_settings_info(self):
+        """Show settings info or open settings."""
+        self._show_settings_dialog()
 
     def _create_editor_area(self) -> QWidget:
         """Create the main editor area with toolbar and text editor."""
@@ -142,6 +294,14 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
+        # Prompt Selector in Toolbar
+        toolbar.addWidget(QLabel("  Template: "))
+        self.prompt_selector = PromptSelector()
+        self.prompt_selector.prompt_changed.connect(self._on_prompt_changed)
+        toolbar.addWidget(self.prompt_selector)
+
+        toolbar.addSeparator()
+
         # Generate button
         self.generate_btn = QPushButton("✨ Generate")
         self.generate_btn.setObjectName("generate-btn")
@@ -173,154 +333,11 @@ class MainWindow(QMainWindow):
 
         return toolbar
 
-    def _create_sidebar(self) -> QFrame:
-        """Create the settings sidebar."""
-        sidebar = QFrame()
-        sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(self.settings.ui.sidebar_width)
-        sidebar_layout = QVBoxLayout(sidebar)
-
-        # Temperature control
-        self._add_temperature_control(sidebar_layout)
-        sidebar_layout.addSpacing(20)
-
-        # Token limit control
-        self._add_token_control(sidebar_layout)
-        sidebar_layout.addSpacing(20)
-
-        # Prompt selector
-        self.prompt_selector = PromptSelector()
-        self.prompt_selector.prompt_changed.connect(self._on_prompt_changed)
-        sidebar_layout.addWidget(self.prompt_selector)
-        sidebar_layout.addSpacing(20)
-
-        # Ollama URL control
-        self._add_ollama_url_control(sidebar_layout)
-        sidebar_layout.addSpacing(20)
-        
-        # Spell check control (if available)
-        if SpellChecker.is_available():
-            self._add_spell_check_control(sidebar_layout)
-            sidebar_layout.addSpacing(20)
-
-        # Tips section
-        self._add_tips_section(sidebar_layout)
-        sidebar_layout.addStretch()
-
-        return sidebar
-
-    def _add_temperature_control(self, layout):
-        """Add temperature control to sidebar."""
-        temp_title = QLabel("🌡️ Temperature")
-        temp_title.setObjectName("sidebar-title")
-        layout.addWidget(temp_title)
-
-        self.temp_value_label = QLabel(f"{self.temperature:.2f}")
-        self.temp_value_label.setAlignment(Qt.AlignRight)
-        self.temp_value_label.setStyleSheet(
-            "font-weight: bold; font-size: 16px; color: #007aff;"
-        )
-        layout.addWidget(self.temp_value_label)
-
-        self.temp_slider = QSlider(Qt.Horizontal)
-        self.temp_slider.setMinimum(int(self.settings.generation.min_temperature * 100))
-        self.temp_slider.setMaximum(int(self.settings.generation.max_temperature * 100))
-        self.temp_slider.setValue(int(self.temperature * 100))
-        self.temp_slider.setTickPosition(QSlider.TicksBelow)
-        self.temp_slider.setTickInterval(25)
-        self.temp_slider.valueChanged.connect(self._on_temperature_changed)
-        layout.addWidget(self.temp_slider)
-
-        # Temperature hints
-        temp_hints = QHBoxLayout()
-        temp_hints.addWidget(QLabel("🎯"))
-        temp_hints.addStretch()
-        temp_hints.addWidget(QLabel("⚖️"))
-        temp_hints.addStretch()
-        temp_hints.addWidget(QLabel("🎨"))
-        layout.addLayout(temp_hints)
-
-    def _add_token_control(self, layout):
-        """Add token limit control to sidebar."""
-        token_title = QLabel("📊 Token Limit")
-        token_title.setObjectName("sidebar-title")
-        layout.addWidget(token_title)
-
-        self.token_spinbox = QSpinBox()
-        self.token_spinbox.setMinimum(self.settings.generation.min_token_limit)
-        self.token_spinbox.setMaximum(self.settings.generation.max_token_limit)
-        self.token_spinbox.setValue(self.token_limit)
-        self.token_spinbox.setSuffix(" tokens")
-        self.token_spinbox.valueChanged.connect(self._on_token_limit_changed)
-        layout.addWidget(self.token_spinbox)
-
-        token_hints = QLabel("Higher = longer response\\nLower = shorter response")
-        token_hints.setStyleSheet("font-size: 11px; color: #888;")
-        layout.addWidget(token_hints)
-
-    def _add_ollama_url_control(self, layout):
-        """Add Ollama URL control to sidebar."""
-        url_title = QLabel("🔗 Ollama URL")
-        url_title.setObjectName("sidebar-title")
-        layout.addWidget(url_title)
-
-        self.ollama_url_input = QLineEdit()
-        self.ollama_url_input.setText(self.settings.ollama.url)
-        self.ollama_url_input.setPlaceholderText("http://localhost:11434")
-        self.ollama_url_input.editingFinished.connect(self._on_ollama_url_changed)
-        layout.addWidget(self.ollama_url_input)
-
-        url_hints = QLabel("Ollama server URL")
-        url_hints.setStyleSheet("font-size: 11px; color: #888;")
-        layout.addWidget(url_hints)
-    
-    def _add_spell_check_control(self, layout):
-        """Add spell check control to sidebar."""
-        spell_title = QLabel("📝 Spell Check")
-        spell_title.setObjectName("sidebar-title")
-        layout.addWidget(spell_title)
-        
-        # Enable/disable checkbox
-        from PyQt5.QtWidgets import QCheckBox
-        self.spell_check_checkbox = QCheckBox("Enable spell checking")
-        self.spell_check_checkbox.setChecked(self.settings.spell_check.enabled)
-        self.spell_check_checkbox.toggled.connect(self._on_spell_check_toggled)
-        layout.addWidget(self.spell_check_checkbox)
-        
-        # Language selection
-        if SpellChecker.is_available():
-            from PyQt5.QtWidgets import QComboBox
-            lang_layout = QHBoxLayout()
-            lang_layout.addWidget(QLabel("Language:"))
-            
-            self.spell_lang_combo = QComboBox()
-            available_langs = SpellChecker.get_available_languages()
-            for lang_tag in available_langs:
-                self.spell_lang_combo.addItem(lang_tag)
-            
-            # Set current language
-            current_index = self.spell_lang_combo.findText(self.settings.spell_check.language)
-            if current_index >= 0:
-                self.spell_lang_combo.setCurrentIndex(current_index)
-            
-            self.spell_lang_combo.currentTextChanged.connect(self._on_spell_language_changed)
-            lang_layout.addWidget(self.spell_lang_combo)
-            layout.addLayout(lang_layout)
-
-    def _add_tips_section(self, layout):
-        """Add tips section to sidebar."""
-        info_title = QLabel("ℹ️ Tips")
-        info_title.setObjectName("sidebar-title")
-        layout.addWidget(info_title)
-
-        tips = [
-            "• Place cursor where you want AI to continue",
-            "• Lower temp = more focused",
-            "• Higher temp = more creative",
-            "• Save your work frequently",
-        ]
-        for tip in tips:
-            layout.addWidget(QLabel(tip))
+    def _open_prompt_manager(self):
+        """Open the prompt management dialog."""
+        dialog = PromptManagerDialog(self)
+        if dialog.exec_() == dialog.Accepted:
+            self.prompt_selector.refresh_prompts()
 
     def _connect_signals(self):
         """Connect additional signals."""

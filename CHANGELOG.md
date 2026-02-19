@@ -5,6 +5,17 @@ All notable changes to AI Writer will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-02-19
+
+### Changed
+
+- **UI Refactoring**: Simplified the interface for a better writing experience
+  - Removed settings sidebar to maximize editor space
+  - Integrated "General Settings" dialog for temperature and token limits
+  - Moved prompt template selector to the main toolbar for easier access
+  - Added "Settings" menu to the menubar for centralized configuration
+  - Unified version strings across all application components
+
 ## [0.3.0] - 2026-02-19
 
 ### Added

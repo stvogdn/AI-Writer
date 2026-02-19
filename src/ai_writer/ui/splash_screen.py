@@ -82,7 +82,7 @@ class SplashScreen(QSplashScreen):
         layout.addWidget(title_label)
         
         # Version label
-        version_label = QLabel("Version 0.1.0")
+        version_label = QLabel("Version 0.3.1")
         version_label.setAlignment(Qt.AlignCenter)
         version_label.setStyleSheet("""
             QLabel {

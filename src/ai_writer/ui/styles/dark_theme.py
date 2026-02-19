@@ -1,8 +1,17 @@
 """Dark theme stylesheet for AI Writer."""
 
+import sys
+
+if sys.platform == "darwin":
+    PLATFORM_FONT = "'San Francisco', 'Helvetica Neue', 'Arial', sans-serif"
+elif sys.platform == "win32":
+    PLATFORM_FONT = "'Segoe UI', 'Arial', sans-serif"
+else:
+    PLATFORM_FONT = "'Ubuntu', 'Segoe UI', 'Arial', sans-serif"
+
 DARK_THEME = """
 QMainWindow { background-color: #1e1e1e; }
-QWidget { font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #e0e0e0; }
+QWidget { font-family: __PLATFORM_FONT__; color: #e0e0e0; }
 
 QToolBar {
     background-color: #2c2c2c;
@@ -87,4 +96,4 @@ QPushButton#save-btn {
 }
 QPushButton#save-btn:hover { background-color: #28a745; }
 QPushButton#save-btn:disabled { background-color: #555; }
-"""
+""".replace("__PLATFORM_FONT__", PLATFORM_FONT)

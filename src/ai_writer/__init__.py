@@ -4,8 +4,8 @@ This package provides a PyQt5-based desktop application that integrates with
 Ollama for AI text generation and completion.
 """
 
-__version__ = "0.2.0"
-__author__ = "Laszlobeer"
+__version__ = "0.3.1"
+__author__ = "Laszlobeer, Ogden, Various LLMs"
 __email__ = ""
 __description__ = (
     "A sleek desktop application for AI-assisted writing powered by Ollama"
